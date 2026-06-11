@@ -140,12 +140,48 @@ def check_ui() -> list[tuple[str, bool, str]]:
     return [(k, v, "found" if v else "MISSING") for k, v in checks.items()]
 
 
+def check_live_smoke() -> list[tuple[str, bool, str]]:
+    """Real round-trip per model — catches API-side breakages (deprecated model,
+    invalid speaker) that the fake-SDK check cannot. Costs a few API calls."""
+    from shuka.config import Settings
+    from shuka.sarvam import SarvamClient
+
+    out: list[tuple[str, bool, str]] = []
+    c = SarvamClient(Settings(intake_mode="live"))
+    audio = Path("samples/complaint_hinglish.wav")
+    try:
+        r = c.translate_speech(audio)
+        out.append(("Saaras translate (real)", bool(r.get("transcript")), r.get("transcript", "")[:40]))
+    except Exception as e:
+        out.append(("Saaras translate (real)", False, str(e)[-80:]))
+    try:
+        r = c.transcribe_speech(audio)
+        out.append(("Saaras codemix (real)", bool(r.get("transcript")), r.get("transcript", "")[:40]))
+    except Exception as e:
+        out.append(("Saaras codemix (real)", False, str(e)[-80:]))
+    try:
+        txt = c.chat([{"role": "user", "content": "Return JSON {\"ok\":true} only"}],
+                     stage="structure", ref="smoke")
+        out.append(("Sarvam-M chat (real)", bool(txt), txt[:40]))
+    except Exception as e:
+        out.append(("Sarvam-M chat (real)", False, str(e)[-80:]))
+    try:
+        b = c.tts("namaste", "hi-IN", "smoke")
+        out.append(("Bulbul TTS (real)", isinstance(b, bytes) and len(b) > 100, f"{len(b)} bytes"))
+    except Exception as e:
+        out.append(("Bulbul TTS (real)", False, str(e)[-80:]))
+    return out
+
+
 def main() -> int:
+    live = "--live" in sys.argv
     sections = [
         ("SARVAM MODELS (live wiring, no network)", check_models()),
         ("SERVER ROUTES", check_routes()),
         ("UI WIRING", check_ui()),
     ]
+    if live:
+        sections.append(("SARVAM MODELS (REAL API smoke test)", check_live_smoke()))
     all_ok = True
     for title, rows in sections:
         print(f"\n{title}")

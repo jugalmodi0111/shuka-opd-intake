@@ -17,6 +17,9 @@ test:
 wiring:
 	uv run python eval/wiring_check.py
 
+wiring-live:
+	uv run python eval/wiring_check.py --live
+
 audit:
 	uv run python eval/run_eval.py --grounding
 
