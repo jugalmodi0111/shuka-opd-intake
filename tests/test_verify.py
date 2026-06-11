@@ -1,5 +1,6 @@
-from shuka.schema import DriftKind
-from shuka.verify import VerificationReport, cross_check, detect_cues, normalize_quantity
+from shuka.schema import (DriftKind, FactStatus, HPI, IntakeNote,
+                          Provenance, Source, Symptom)
+from shuka.verify import VerificationReport, cross_check, detect_cues, normalize_quantity, verify_facts
 
 
 def test_negation_cue_hindi_with_anchor():
@@ -66,3 +67,39 @@ def test_laterality_missing_in_en():
 def test_missing_original_is_fail_safe_not_fail_open():
     report = cross_check(None, detect_cues("no fever", "en"))
     assert report.verified is False
+
+
+def _note2(symptoms):
+    return IntakeNote(language_detected="hi-IN", chief_complaint="stomach pain",
+                      chief_complaint_patient_words="pet mein dard",
+                      hpi=HPI(duration="2 days",
+                              provenance={"duration": Provenance(source=Source.SPOKEN,
+                                          transcript_span="two days", confidence=0.9)}),
+                      symptoms=symptoms, verbatim_transcript_en="had fever, pain for two days")
+
+
+def _fever2(status):
+    return Symptom(name="fever", patient_term="bukhar", status=status,
+                   provenance=Provenance(source=Source.SPOKEN, transcript_span="fever",
+                                         confidence=0.9))
+
+
+def test_negation_drift_marks_fact_unconfirmed():
+    orig = detect_cues("bukhar nahi tha, do din se dard", "hi-IN")
+    en = detect_cues("had fever, pain for two days", "en")
+    note = verify_facts(_note2([_fever2(FactStatus.STATED)]),
+                        cross_check(orig, en),
+                        "had fever, pain for two days", "bukhar nahi tha, do din se dard")
+    fever = note.symptoms[0]
+    assert fever.needs_confirmation
+    assert any(f.kind == DriftKind.NEGATION and f.fact_ref == "fever"
+               for f in note.verification_flags)
+
+
+def test_fail_safe_marks_all_safety_critical():
+    report = VerificationReport(flags=[], verified=False)
+    note = verify_facts(_note2([_fever2(FactStatus.DENIED)]), report,
+                        "no fever, pain for two days", None)
+    assert note.symptoms[0].needs_confirmation
+    assert note.hpi.needs_confirmation.get("duration") is True
+    assert all(f.kind == DriftKind.UNVERIFIED for f in note.verification_flags)

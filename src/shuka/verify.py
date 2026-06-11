@@ -267,3 +267,64 @@ def cross_check(cues_orig, cues_en) -> VerificationReport:
             ))
 
     return VerificationReport(flags=flags, verified=True)
+
+
+# ── TASK 8: verify_facts ──────────────────────────────────────────────────
+
+from shuka.schema import FactStatus, IntakeNote
+
+
+def verify_facts(note: IntakeNote, report: VerificationReport,
+                 transcript_en: str, transcript_original) -> IntakeNote:
+    """Attach needs_confirmation to facts matching drift flags.
+    Fail-safe path (verified=False): every safety-critical fact gets needs_confirmation."""
+    if not report.verified:
+        # fail-safe: mark every stated/denied symptom + numeric HPI + location
+        for s in note.symptoms:
+            if s.status in (FactStatus.STATED, FactStatus.DENIED):
+                s.needs_confirmation = True
+                note.verification_flags.append(VerificationFlag(
+                    fact_ref=s.name,
+                    kind=DriftKind.UNVERIFIED,
+                    detail="original transcript unavailable; cannot verify this fact",
+                ))
+        for field_name in ("duration", "onset", "location"):
+            val = getattr(note.hpi, field_name, None)
+            if val:
+                note.hpi.needs_confirmation[field_name] = True
+                note.verification_flags.append(VerificationFlag(
+                    fact_ref=f"hpi.{field_name}",
+                    kind=DriftKind.UNVERIFIED,
+                    detail="original transcript unavailable",
+                ))
+        for m in note.medications:
+            if m.dose:
+                m.needs_confirmation = True
+        return note
+
+    for flag in report.flags:
+        anchor = flag.fact_ref.lower()
+        for s in note.symptoms:
+            name_lower = s.name.lower()
+            term_lower = (s.patient_term or "").lower()
+            if anchor in name_lower or name_lower in anchor or anchor in term_lower or term_lower in anchor:
+                s.needs_confirmation = True
+                if not any(f.fact_ref == s.name for f in note.verification_flags):
+                    note.verification_flags.append(VerificationFlag(
+                        fact_ref=s.name,
+                        kind=flag.kind,
+                        detail=flag.detail,
+                        original_evidence=flag.original_evidence,
+                    ))
+        # laterality → hpi.location
+        if flag.kind == DriftKind.LATERALITY:
+            note.hpi.needs_confirmation["location"] = True
+        # number → duration and medication doses
+        if flag.kind == DriftKind.NUMBER:
+            if note.hpi.duration:
+                note.hpi.needs_confirmation["duration"] = True
+            for m in note.medications:
+                if m.dose:
+                    m.needs_confirmation = True
+
+    return note
