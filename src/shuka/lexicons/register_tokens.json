@@ -1,0 +1,7 @@
+{
+  "biomedical_english": ["bp", "sugar", "thyroid", "scan", "x-ray", "xray", "tablet", "operation", "report", "diabetes", "pressure", "cholesterol", "urine", "stool", "echo", "mri", "ct"],
+  "somatic_idioms": {
+    "hi": ["dil baith raha hai", "tension", "kamar dard", "pet bhaari hai", "sir bhaari hai"],
+    "ta": ["nenju adaikkudhu", "thalai suthudhu"]
+  }
+}
