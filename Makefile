@@ -14,6 +14,9 @@ test:
 	uv run pytest tests -q
 	uv run python eval/run_eval.py --gates
 
+wiring:
+	uv run python eval/wiring_check.py
+
 audit:
 	uv run python eval/run_eval.py --grounding
 

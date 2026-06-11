@@ -37,6 +37,12 @@ def favicon():
     return JSONResponse({}, status_code=204)
 
 
+@app.get("/mode")
+def mode():
+    from shuka.config import settings
+    return JSONResponse({"mode": settings.intake_mode})
+
+
 @app.get("/samples")
 def list_samples():
     if not _SAMPLES.exists():

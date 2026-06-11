@@ -174,10 +174,18 @@ body {
 }
 .hero-h1 em {
   font-style: normal;
-  background: linear-gradient(135deg, var(--orange) 0%, var(--peach) 60%);
+  /* Accent word sits on the orange hero bloom — use crisp white, not an
+     orange gradient (which vanishes against the background). */
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF1DC 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: 0 1px 18px rgba(255,255,255,0.25);
+}
+/* If background-clip:text is unsupported, fall back to solid white */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hero-h1 em { -webkit-text-fill-color: #FFFFFF; color: #FFFFFF; }
 }
 .hero-sub {
   font-size: 17px;
@@ -891,6 +899,31 @@ body {
   text-align: center;
 }
 
+/* Mode banner */
+.mode-banner {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center;
+  font-family: 'MatterMono', monospace;
+  font-size: 12px;
+  color: var(--text-mid);
+  background: rgba(165,187,252,0.14);
+  border: 1px solid rgba(165,187,252,0.34);
+  border-radius: 100px;
+  padding: 7px 16px;
+  margin: 0 auto 16px;
+  max-width: max-content;
+}
+.mode-banner.live {
+  background: rgba(46,125,50,0.10);
+  border-color: rgba(46,125,50,0.30);
+  color: #2E7D32;
+}
+.mode-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--periwinkle);
+}
+.mode-banner.live .mode-dot { background: #2E7D32; }
+
 /* Outer container */
 .prompt-box {
   background: rgba(14,14,14,0.05);
@@ -1274,6 +1307,11 @@ body {
     <div class="prompt-box-wrap reveal">
       <div class="prompt-box-label">Voice Intake</div>
 
+      <div class="mode-banner" id="mode-banner">
+        <span class="mode-dot"></span>
+        <span id="mode-banner-text">Checking mode…</span>
+      </div>
+
       <div class="prompt-box" id="intake-panel">
 
         <!-- Sample selector row -->
@@ -1538,17 +1576,65 @@ function pbSyncSubmit() {
   btn.disabled = !selectedSample && !hasText && !pbVoiceActive;
 }
 
-/* Voice toggle */
-function pbToggleVoice() {
-  pbVoiceActive = !pbVoiceActive;
+/* App mode (mock | live), fetched from server on load */
+let appMode = 'mock';
+let mediaRecorder = null;
+let recordedChunks = [];
+
+async function detectMode() {
+  const banner = document.getElementById('mode-banner');
+  const text   = document.getElementById('mode-banner-text');
+  try {
+    const r = await fetch('/mode');
+    appMode = (await r.json()).mode || 'mock';
+  } catch { appMode = 'mock'; }
+  if (appMode === 'live') {
+    banner.classList.add('live');
+    text.textContent = 'LIVE — Saaras v3 · Bulbul v3 · Sarvam-M. Mic records real audio.';
+  } else {
+    banner.classList.remove('live');
+    text.innerHTML = 'MOCK mode — responses from fixtures, zero API spend. ' +
+      'Mic needs <b>INTAKE_MODE=live</b>; for this demo click a <b>Sample</b> clip above.';
+  }
+}
+
+/* Voice toggle — real MediaRecorder capture */
+async function pbToggleVoice() {
   const btn      = document.getElementById('pb-toggle-voice');
   const recorder = document.getElementById('pb-voice-recorder');
   const textarea = document.getElementById('pb-textarea');
 
+  // In mock mode the pipeline can't transcribe arbitrary audio (no fixture). Be honest.
+  if (appMode !== 'live' && !pbVoiceActive) {
+    setStatus('Mic disabled in mock mode — pick a Sample clip, or run with INTAKE_MODE=live.');
+    const b = document.getElementById('mode-banner');
+    b.animate([{transform:'scale(1)'},{transform:'scale(1.04)'},{transform:'scale(1)'}], {duration:380});
+    return;
+  }
+
+  pbVoiceActive = !pbVoiceActive;
   btn.classList.toggle('active', pbVoiceActive);
 
   if (pbVoiceActive) {
-    textarea.style.display    = 'none';
+    // Start capturing
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        if (blob.size > 0) runIntakeFromBlob(blob, 'recording.webm');
+      };
+      mediaRecorder.start();
+    } catch (err) {
+      pbVoiceActive = false;
+      btn.classList.remove('active');
+      setStatus('Mic permission denied: ' + err.message);
+      return;
+    }
+    textarea.style.display = 'none';
     recorder.classList.add('active');
     pbVoiceSeconds = 0;
     document.getElementById('pb-voice-timer').textContent = '0:00';
@@ -1558,14 +1644,14 @@ function pbToggleVoice() {
       const s = pbVoiceSeconds % 60;
       document.getElementById('pb-voice-timer').textContent =
         m + ':' + String(s).padStart(2, '0');
-      // auto-stop at 30s
-      if (pbVoiceSeconds >= 30) pbToggleVoice();
+      if (pbVoiceSeconds >= 30) pbToggleVoice();  // auto-stop at 30s
     }, 1000);
   } else {
     clearInterval(pbVoiceTimer);
     pbVoiceTimer = null;
     recorder.classList.remove('active');
     textarea.style.display = '';
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   }
   pbSyncSubmit();
 }
@@ -1627,6 +1713,8 @@ function pbSubmit() {
 
 /* ── GSAP load animation ─────────────────────────────────────── */
 window.addEventListener('DOMContentLoaded', () => {
+  detectMode();
+  if (typeof gsap === 'undefined') return;  // never let a CDN miss blank the page
   gsap.set('.reveal', { opacity: 0, y: 20 });
   gsap.to('.reveal', {
     opacity: 1, y: 0,
@@ -1678,34 +1766,10 @@ async function runIntake() {
   if (pbBtn) { pbBtn.disabled = false; pbBtn.classList.add('running'); pbBtn.setAttribute('aria-label', 'Stop intake'); }
 
   try {
-    // Fetch the sample WAV
     const wavResp = await fetch(`/samples/${selectedSample}`);
     if (!wavResp.ok) throw new Error(`Could not load sample: ${wavResp.status} ${wavResp.statusText}`);
     const blob = await wavResp.blob();
-
-    setStatus('Running intake pipeline…');
-
-    // POST to /intake
-    const fd = new FormData();
-    fd.append('audio', blob, selectedSample);
-
-    // Attach prescription if provided (new pb-image-upload, fallback to legacy id)
-    const imgInput = document.getElementById('pb-image-upload') || document.getElementById('image-upload');
-    if (imgInput && imgInput.files.length > 0) {
-      fd.append('image', imgInput.files[0]);
-    }
-
-    const resp = await fetch('/intake', { method: 'POST', body: fd });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error(`Server error ${resp.status}: ${txt.slice(0, 200)}`);
-    }
-
-    const data = await resp.json();
-    setStatus('Done');
-    hideSkeleton();
-    renderResults(data);
-
+    await postIntake(blob, selectedSample);
   } catch (err) {
     hideSkeleton();
     showError(err.message);
@@ -1714,6 +1778,41 @@ async function runIntake() {
     if (btn) btn.disabled = false;
     if (pbBtn) { pbBtn.classList.remove('running'); pbBtn.setAttribute('aria-label', 'Run intake'); pbSyncSubmit(); }
   }
+}
+
+/* Run intake from a recorded blob (live-mode voice path) */
+async function runIntakeFromBlob(blob, filename) {
+  hideError(); showSkeleton(); hideResults();
+  try {
+    await postIntake(blob, filename);
+  } catch (err) {
+    hideSkeleton();
+    showError(err.message);
+    setStatus('');
+  }
+}
+
+/* Shared POST core */
+async function postIntake(blob, filename) {
+  setStatus('Running intake pipeline…');
+  const fd = new FormData();
+  fd.append('audio', blob, filename);
+  const imgInput = document.getElementById('pb-image-upload') || document.getElementById('image-upload');
+  if (imgInput && imgInput.files.length > 0) fd.append('image', imgInput.files[0]);
+
+  const resp = await fetch('/intake', { method: 'POST', body: fd });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    let hint = '';
+    if (resp.status === 500 && /FixtureMissing/i.test(txt)) {
+      hint = ' — this audio has no mock fixture. Run the server with INTAKE_MODE=live to transcribe real recordings, or use a Sample clip.';
+    }
+    throw new Error(`Server error ${resp.status}${hint || ': ' + txt.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  setStatus('Done');
+  hideSkeleton();
+  renderResults(data);
 }
 
 /* ── Skeleton helpers ────────────────────────────────────────── */
@@ -1740,32 +1839,45 @@ function renderResults(data) {
   const cc = note.chief_complaint || note.chiefComplaint || '';
   document.getElementById('complaint-text').textContent = cc || '—';
 
-  /* HPI */
+  /* HPI — only scalar axes (skip nested provenance / needs_confirmation maps) */
   const hpi = note.hpi || {};
   const hpiBody = document.getElementById('hpi-body');
   hpiBody.innerHTML = '';
+  const needsConf = hpi.needs_confirmation || {};
   for (const [k, v] of Object.entries(hpi)) {
-    if (!v && v !== 0) continue;
+    if (v === null || v === undefined || v === '') continue;
+    if (typeof v === 'object') continue;   // provenance / needs_confirmation
+    const flag = needsConf[k] ? ' <span class="chip chip-unconf">CONFIRM</span>' : '';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${fmtKey(k)}</td><td>${escHtml(String(v))}</td>`;
+    tr.innerHTML = `<td>${fmtKey(k)}</td><td>${escHtml(String(v))}${flag}</td>`;
     hpiBody.appendChild(tr);
+  }
+  if (!hpiBody.children.length) {
+    hpiBody.innerHTML = '<tr><td colspan="2" style="color:var(--text-muted)">—</td></tr>';
   }
 
   /* Symptoms */
   const syms = note.symptoms || [];
   const symList = document.getElementById('symptom-list');
   symList.innerHTML = '';
+  if (!syms.length) {
+    symList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">None recorded</span>';
+  }
   syms.forEach(s => {
+    const unconf = s.needs_confirmation;
     const status = (s.status || '').toLowerCase();
-    const chipClass = status === 'stated' ? 'chip-stated'
+    const chipClass = unconf ? 'chip-unconf'
+                    : status === 'stated' ? 'chip-stated'
                     : status === 'denied' ? 'chip-denied'
                     : 'chip-unconf';
-    const label = status === 'stated' ? 'STATED'
+    const label = unconf ? 'UNCONFIRMED'
+                : status === 'stated' ? 'STATED'
                 : status === 'denied' ? 'DENIED'
                 : 'UNCONFIRMED';
+    const term = s.patient_term ? ` <span style="color:var(--text-muted);font-size:12px;">“${escHtml(s.patient_term)}”</span>` : '';
     symList.innerHTML += `
       <span class="symptom-item">
-        ${escHtml(s.name || s.symptom || s)}
+        ${escHtml(s.name || s.symptom || s)}${term}
         <span class="chip ${chipClass}">${label}</span>
       </span>`;
   });
@@ -1778,12 +1890,14 @@ function renderResults(data) {
     flagList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No flags raised.</span>';
   } else {
     flags.forEach(f => {
+      const ref = f.fact_ref ? `<strong>${escHtml(f.fact_ref)}</strong> — ` : '';
+      const ev = f.original_evidence ? ` <span style="color:var(--text-muted);font-size:12px;">(heard: “${escHtml(f.original_evidence)}”)</span>` : '';
       flagList.innerHTML += `
         <div class="flag-item">
           <div class="flag-dot"></div>
           <div class="flag-body">
             <div class="flag-kind">${escHtml(f.kind || f.type || 'flag')}</div>
-            <div class="flag-msg">${escHtml(f.message || f.description || f.msg || JSON.stringify(f))}</div>
+            <div class="flag-msg">${ref}${escHtml(f.detail || f.message || f.description || f.msg || '')}${ev}</div>
           </div>
         </div>`;
     });
@@ -1793,17 +1907,22 @@ function renderResults(data) {
   const gaps = note.gaps || [];
   const gapList = document.getElementById('gap-list');
   gapList.innerHTML = '';
+  if (!gaps.length) {
+    gapList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No follow-up gaps.</span>';
+  }
   gaps.forEach(g => {
-    const options = (g.options || []).map(o =>
-      `<button class="btn-option">${escHtml(String(o))}</button>`).join('');
+    const opts = g.followup_options || g.options || [];
+    const options = opts.map(o =>
+      `<button type="button" class="btn-option">${escHtml(String(o))}</button>`).join('');
+    const kind = (g.kind || g.type || 'GAP').toUpperCase();
     gapList.innerHTML += `
       <div class="gap-item reveal">
         <div class="gap-header">
-          <span class="chip chip-gap">${escHtml(g.kind || g.type || 'GAP')}</span>
-          <span style="font-size:13.5px;color:var(--text-mid);font-weight:500;">${escHtml(g.field || g.topic || '')}</span>
+          <span class="chip chip-gap">${escHtml(kind)}</span>
+          <span style="font-size:13.5px;color:var(--text-mid);font-weight:500;">${escHtml(g.patient_term || g.field || g.topic || '')}</span>
         </div>
         <div class="gap-body">
-          <div class="gap-vernacular">${escHtml(g.vernacular || g.follow_up || g.question || '')}</div>
+          <div class="gap-vernacular">${escHtml(g.followup_vernacular || g.vernacular || g.follow_up || g.question || '')}</div>
           <div class="gap-options">${options}</div>
         </div>
       </div>`;
@@ -1823,10 +1942,12 @@ function renderResults(data) {
     ? labs.map(l => `<span class="med-item">${escHtml(String(l.name || l))}</span>`).join('')
     : '<span style="color:var(--text-muted);font-size:13px;">None requested</span>';
 
-  /* Transcripts */
+  /* Transcripts — server sends verbatim_transcript_en / _original */
   const tx = note.transcripts || {};
-  document.getElementById('transcript-en').textContent   = tx.en || tx.english || tx.translated || '';
-  document.getElementById('transcript-orig').textContent = tx.original || tx.vernacular || tx.source || tx.hi || tx.ta || '';
+  document.getElementById('transcript-en').textContent   =
+    note.verbatim_transcript_en || tx.en || tx.english || tx.translated || '—';
+  document.getElementById('transcript-orig').textContent =
+    note.verbatim_transcript_original || tx.original || tx.vernacular || tx.source || '—';
 
   /* Readback audio */
   if (data.readback_wav_b64) {
@@ -1835,16 +1956,17 @@ function renderResults(data) {
     document.getElementById('card-audio').style.display = 'block';
   }
 
-  /* Show results with GSAP stagger */
+  /* Show results — visibility must NOT depend on GSAP (CDN may be slow/blocked) */
   const section = document.getElementById('results-section');
   section.classList.add('visible');
-  gsap.set('#results-section .reveal', { opacity: 0, y: 16 });
-  gsap.to('#results-section .reveal', {
-    opacity: 1, y: 0,
-    duration: 0.5,
-    ease: 'power2.out',
-    stagger: 0.07,
-  });
+  // Hard fallback: force reveal elements visible regardless of animation
+  section.querySelectorAll('.reveal').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo('#results-section .reveal',
+      { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.07 });
+  }
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ── Utils ────────────────────────────────────────────────────── */
@@ -1852,7 +1974,7 @@ function fmtKey(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
