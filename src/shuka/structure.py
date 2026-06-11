@@ -77,8 +77,13 @@ def _extract_json(raw: str) -> str:
             elif ch == "}":
                 depth -= 1
                 if depth == 0:
-                    return s[start:i + 1]
-    return s[start:]
+                    return _strip_trailing_commas(s[start:i + 1])
+    return _strip_trailing_commas(s[start:])
+
+
+def _strip_trailing_commas(s: str) -> str:
+    """Remove trailing commas before } or ] — a common LLM JSON defect."""
+    return re.sub(r",(\s*[}\]])", r"\1", s)
 
 
 def _chat(messages: list) -> str:
@@ -103,9 +108,17 @@ def build_note(transcript_en: str, lang: str, ref: str) -> IntakeNote:
         },
     ]
 
+    import time
+
     last_err: Exception | None = None
-    for _attempt in range(3):
+    for _attempt in range(4):
         raw = _chat(messages)
+        if not (raw or "").strip():
+            # Empty response — transient (rate limit / reasoning-only). Back off and retry
+            # the SAME prompt rather than appending an empty turn that poisons context.
+            last_err = ValueError("empty model response")
+            time.sleep(1.5 * (_attempt + 1))
+            continue
         try:
             data = json.loads(_extract_json(raw))
             note = IntakeNote.model_validate(data)
@@ -125,5 +138,5 @@ def build_note(transcript_en: str, lang: str, ref: str) -> IntakeNote:
             )
 
     raise RuntimeError(
-        f"structure.build_note failed after 3 repair attempts: {last_err}"
+        f"structure.build_note failed after 4 attempts: {last_err}"
     )

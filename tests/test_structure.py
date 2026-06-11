@@ -60,9 +60,9 @@ def test_repair_loop_retries_on_bad_json(monkeypatch):
     assert calls[0] == 2
 
 
-def test_repair_loop_fails_after_3_attempts(monkeypatch):
+def test_repair_loop_fails_after_attempts(monkeypatch):
     monkeypatch.setattr(structure, "_chat", lambda msgs: "{{bad json}}")
-    with pytest.raises(RuntimeError, match="3 repair attempts"):
+    with pytest.raises(RuntimeError, match="failed after .* attempts"):
         structure.build_note("stomach pain for two days", "hi-IN", "ref3")
 
 

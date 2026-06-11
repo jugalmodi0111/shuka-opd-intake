@@ -29,6 +29,41 @@
       "referents": ["tingling", "numbness", "pins_and_needles", "paresthesia"],
       "probe": "Jhunjhuni kaisi lagti hai — sui chubhne jaisi, ya sunn ho jaata hai?",
       "options": ["sui chubhne jaisi", "sunn ho jaata hai"]
+    },
+    "दर्द": {
+      "referents": ["sharp_pain", "dull_ache", "cramping", "burning_pain", "pressure"],
+      "probe": "Dard kaisa hai — sui chubhne jaisa, marod jaisa, jalan jaisa, ya bhaari-bhaari?",
+      "options": ["sui chubhne jaisa", "marod jaisa", "jalan jaisa", "bhaari-bhaari"]
+    },
+    "चक्कर": {
+      "referents": ["vertigo", "presyncope", "giddiness", "general_weakness", "orthostatic_hypotension"],
+      "probe": "Chakkar kaisa lagta hai — aas-paas ghoomta hua lagta hai, ya aisa ki andhera aa jaayega, ya sirf kamzori lagti hai?",
+      "options": ["ghoomna jaisa", "andhera jaisa", "kamzori jaisi", "bhaari pan"]
+    },
+    "गैस": {
+      "referents": ["flatulence", "bloating", "acid_reflux", "indigestion", "abdominal_discomfort"],
+      "probe": "Gas kaise hoti hai — pet phoolna, dakar aana, jalan, ya kuch aur?",
+      "options": ["pet phoolna", "dakar aana", "jalan", "marod"]
+    },
+    "गर्मी": {
+      "referents": ["fever", "heat_sensation", "burning_sensation", "inflammation"],
+      "probe": "Garmi kaisi lagti hai — andar se jalan, ya bahar se garam lagta hai?",
+      "options": ["andar se jalan", "bahar se garam", "bukhar jaisa"]
+    },
+    "कमज़ोरी": {
+      "referents": ["fatigue", "muscle_weakness", "anemia", "hypoglycemia", "general_malaise"],
+      "probe": "Kamzori kaisi hai — haath-paon mein taaql nahi, ya neend aana, ya chakkar jaisi?",
+      "options": ["haath-paon mein taaql nahi", "neend aana", "chakkar jaisi"]
+    },
+    "कमजोरी": {
+      "referents": ["fatigue", "muscle_weakness", "anemia", "hypoglycemia", "general_malaise"],
+      "probe": "Kamzori kaisi hai — haath-paon mein taaql nahi, ya neend aana, ya chakkar jaisi?",
+      "options": ["haath-paon mein taaql nahi", "neend aana", "chakkar jaisi"]
+    },
+    "झुनझुनी": {
+      "referents": ["tingling", "numbness", "pins_and_needles", "paresthesia"],
+      "probe": "Jhunjhuni kaisi lagti hai — sui chubhne jaisi, ya sunn ho jaata hai?",
+      "options": ["sui chubhne jaisi", "sunn ho jaata hai"]
     }
   },
   "ta": {
@@ -38,6 +73,21 @@
       "options": ["sutradhu mathiri", "thoonganum mathiri", "paruvam mathiri"]
     },
     "soodu": {
+      "referents": ["fever", "burning_sensation", "heat_sensation"],
+      "probe": "Soodu epdi irukku — udambu oosi mathiri eriyudha, illaati kaaycchal mathiri?",
+      "options": ["eriyudhu", "kaaycchal mathiri", "udambu soodaaga"]
+    },
+    "மயக்கம்": {
+      "referents": ["dizziness", "confusion", "drowsiness", "syncope"],
+      "probe": "Mayakkam epdi irukku — sutradhu mathiri, illaati thoonganum mathiri?",
+      "options": ["sutradhu mathiri", "thoonganum mathiri", "paruvam mathiri"]
+    },
+    "வலி": {
+      "referents": ["sharp_pain", "dull_ache", "cramping", "burning_pain", "pressure"],
+      "probe": "Vali eppadi irukku — oosi kuthura mathiri, eriyura mathiri, illaati baaram mathiri?",
+      "options": ["oosi kuthura mathiri", "eriyura mathiri", "baaram mathiri"]
+    },
+    "சூடு": {
       "referents": ["fever", "burning_sensation", "heat_sensation"],
       "probe": "Soodu epdi irukku — udambu oosi mathiri eriyudha, illaati kaaycchal mathiri?",
       "options": ["eriyudhu", "kaaycchal mathiri", "udambu soodaaga"]
