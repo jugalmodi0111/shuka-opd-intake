@@ -232,9 +232,16 @@ def _common_words() -> set:
 
 
 def assert_non_leading(gap: "Gap", lex: "Lexicons") -> None:
-    """Hard-fail if the follow-up vernacular mentions a blacklisted symptom name."""
+    """Hard-fail if the follow-up vernacular introduces an UNSTATED blacklisted symptom.
+
+    A blacklisted name is allowed when it appears in the gap's own patient_term —
+    i.e. the patient already uttered it (e.g. echoing back 'bukhar' for a
+    'bukhar-vukhar' category denial is faithful, not leading)."""
     text = (gap.followup_vernacular or "").lower()
+    own = (gap.patient_term or "").lower()
     for name in lex.symptom_names:
+        if name in own:
+            continue  # patient said this term; echoing it is non-leading
         if _re.search(rf"\b{_re.escape(name)}\b", text):
             raise ValueError(
                 f"non_leading_violation: followup for '{gap.patient_term}' "
