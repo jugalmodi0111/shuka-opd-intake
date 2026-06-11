@@ -14,7 +14,9 @@ _TTS_LANG = {
     "bn": "bn-IN", "te": "te-IN", "kn": "kn-IN", "ml": "ml-IN",
     "mr": "mr-IN", "gu": "gu-IN", "pa": "pa-IN", "od": "od-IN", "en": "en-IN",
 }
-_TTS_SPEAKER = {"hi-IN": "anushka", "ta-IN": "vidya", "en-IN": "anushka"}
+# Valid bulbul:v3 speakers (anushka/vidya are v2-only).
+_TTS_SPEAKER = {"hi-IN": "priya", "ta-IN": "kavitha", "en-IN": "priya"}
+_TTS_DEFAULT_SPEAKER = "priya"
 
 
 class SarvamClient:
@@ -128,7 +130,7 @@ class SarvamClient:
             r = self._client_sdk().text_to_speech.convert(
                 text=text[:1500],  # Bulbul per-call text limit guard
                 target_language_code=target,
-                speaker=_TTS_SPEAKER.get(target, "anushka"),
+                speaker=_TTS_SPEAKER.get(target, _TTS_DEFAULT_SPEAKER),
                 model=self.settings.tts_model,
                 output_audio_codec="wav",
             )

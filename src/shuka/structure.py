@@ -8,19 +8,77 @@ from shuka.schema import IntakeNote
 
 SYSTEM_PROMPT = """\
 You convert a patient's spoken English transcript into a structured medical intake note.
+Output ONE JSON object that EXACTLY matches this schema. No prose, no markdown fences.
 
-FAITHFULNESS CONTRACT (HARD RULES):
-1. Capture ONLY facts explicitly stated in the transcript.
-2. NEVER infer, assume, or synthesize clinical facts.
-3. Denied symptoms → status="denied" with provenance evidence.
-4. Uncertain facts → needs_confirmation=True.
-5. Do NOT add any symptom, diagnosis, or condition not in the transcript.
-6. Do NOT use "not_mentioned" as a status — omit symptoms entirely if not mentioned.
+SCHEMA (exact keys — do not rename, do not invent keys):
+{
+  "language_detected": "<bcp47 like hi-IN>",
+  "chief_complaint": "<short English summary of the main problem>",
+  "chief_complaint_patient_words": "<the patient's own words for it>",
+  "hpi": {
+    "onset": null, "duration": "<e.g. 2 days or null>", "character": null,
+    "location": null, "aggravating": null, "relieving": null, "progression": null
+  },
+  "symptoms": [
+    {
+      "name": "<clinical name>",
+      "patient_term": "<patient's word or null>",
+      "status": "stated" | "denied",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "<exact quote>", "confidence": 0.9}
+    }
+  ],
+  "medications": [
+    {"name": "<drug>", "patient_term": "<patient word>", "dose": null, "frequency": null,
+     "needs_confirmation": true,
+     "provenance": {"source": "spoken", "transcript_span": "<quote>", "confidence": 0.8}}
+  ],
+  "verbatim_transcript_en": "<the full transcript verbatim>"
+}
 
-OUTPUT: Valid JSON matching the IntakeNote Pydantic schema.
-No prose, no markdown fences, no explanation — JSON only."""
+HARD RULES (faithfulness contract):
+1. Capture ONLY facts explicitly stated. NEVER infer, assume, or synthesize.
+2. "status" is exactly "stated" (present) or "denied" (patient said they do NOT have it).
+3. Every symptom and medication MUST include a "provenance" object with source="spoken",
+   a "transcript_span" quoting the words, and a confidence 0..1.
+4. Do NOT use status "not_mentioned" — omit anything not mentioned.
+5. "provenance.source" is the literal string "spoken" (or "document"); never free text.
+6. Output valid JSON only — start with { and end with }."""
 
 _chat_ref: str = ""
+
+
+def _extract_json(raw: str) -> str:
+    """Pull the first balanced JSON object out of a model reply.
+
+    Tolerates ```json fences, leading prose, and trailing commentary by scanning
+    for the first '{' and its matching '}' (brace-depth aware, string-aware)."""
+    s = raw.strip()
+    s = re.sub(r"^```(?:json)?\s*", "", s)
+    s = re.sub(r"\s*```$", "", s)
+    start = s.find("{")
+    if start < 0:
+        return s
+    depth, in_str, esc = 0, False, False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return s[start:i + 1]
+    return s[start:]
 
 
 def _chat(messages: list) -> str:
@@ -48,11 +106,8 @@ def build_note(transcript_en: str, lang: str, ref: str) -> IntakeNote:
     last_err: Exception | None = None
     for _attempt in range(3):
         raw = _chat(messages)
-        # Strip markdown fences if model adds them
-        clean = re.sub(r"^```(?:json)?\s*", "", raw.strip())
-        clean = re.sub(r"\s*```$", "", clean.strip())
         try:
-            data = json.loads(clean)
+            data = json.loads(_extract_json(raw))
             note = IntakeNote.model_validate(data)
             note.verbatim_transcript_en = transcript_en
             return note
