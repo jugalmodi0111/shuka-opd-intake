@@ -1,0 +1,51 @@
+{
+  "language_detected": "ta-IN",
+  "chief_complaint": "abdominal pain for 2 days, worse after eating",
+  "chief_complaint_patient_words": "vayiru vali",
+  "hpi": {
+    "onset": null,
+    "duration": "2 days",
+    "character": null,
+    "location": "abdomen",
+    "aggravating": "after eating",
+    "relieving": null,
+    "progression": null,
+    "provenance": {
+      "duration": {"source": "spoken", "transcript_span": "stomach pain for two days", "confidence": 0.95},
+      "aggravating": {"source": "spoken", "transcript_span": "worse after eating", "confidence": 0.95}
+    },
+    "needs_confirmation": {}
+  },
+  "symptoms": [
+    {
+      "name": "vomiting",
+      "patient_term": "vomiting",
+      "status": "stated",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "I vomited once", "confidence": 0.95}
+    },
+    {
+      "name": "fever",
+      "status": "denied",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "no fever", "confidence": 0.97}
+    }
+  ],
+  "medications": [
+    {
+      "name": "BP medicine",
+      "source": "spoken",
+      "confidence": 0.6,
+      "register": "borrowed_biomedical",
+      "needs_confirmation": true,
+      "provenance": {"source": "spoken", "transcript_span": "I take BP medicine", "confidence": 0.6}
+    }
+  ],
+  "lab_values": [],
+  "allergies": [],
+  "gaps": [],
+  "verification_flags": [],
+  "verbatim_transcript_en": "I have had stomach pain for two days, worse after eating. No fever. I vomited once. I take BP medicine.",
+  "verbatim_transcript_original": null,
+  "unread_documents": []
+}

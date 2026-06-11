@@ -1,0 +1,62 @@
+{
+  "language_detected": "hi-IN",
+  "chief_complaint": "abdominal pain for 2 days, worse after eating",
+  "chief_complaint_patient_words": "pet mein dard",
+  "hpi": {
+    "onset": null,
+    "duration": "2 days",
+    "character": null,
+    "location": "abdomen",
+    "aggravating": "after eating",
+    "relieving": null,
+    "progression": null,
+    "provenance": {
+      "duration": {"source": "spoken", "transcript_span": "stomach pain for two days", "confidence": 0.95},
+      "aggravating": {"source": "spoken", "transcript_span": "worse after eating", "confidence": 0.95}
+    },
+    "needs_confirmation": {}
+  },
+  "symptoms": [
+    {
+      "name": "vomiting",
+      "patient_term": "ulti",
+      "status": "stated",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "I vomited once", "confidence": 0.95}
+    },
+    {
+      "name": "fever",
+      "status": "denied",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "no, there was no fever", "confidence": 0.97}
+    }
+  ],
+  "medications": [
+    {
+      "name": "BP medicine",
+      "source": "spoken",
+      "confidence": 0.6,
+      "register": "borrowed_biomedical",
+      "needs_confirmation": true,
+      "provenance": {"source": "spoken", "transcript_span": "I take BP medicine", "confidence": 0.6}
+    }
+  ],
+  "lab_values": [],
+  "allergies": [],
+  "gaps": [
+    {
+      "field": "medication:BP_medicine:name",
+      "kind": "register_ambiguity",
+      "reason": "medication class only; exact name unknown",
+      "patient_term": "BP ki dawai",
+      "source_stream": "original",
+      "followup_vernacular": null,
+      "followup_options": [],
+      "leads_diagnosis": false
+    }
+  ],
+  "verification_flags": [],
+  "verbatim_transcript_en": "I have had stomach pain for two days, worse after eating. Fever? No, there was no fever. I vomited once. I take BP medicine.",
+  "verbatim_transcript_original": null,
+  "unread_documents": []
+}
