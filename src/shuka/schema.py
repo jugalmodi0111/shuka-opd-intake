@@ -75,10 +75,11 @@ class HPI(BaseModel):
 
 class Medication(BaseModel):
     name: str
+    patient_term: Optional[str] = None
     dose: Optional[str] = None
     frequency: Optional[str] = None
-    source: Source
-    confidence: float = Field(ge=0, le=1)
+    source: Optional[Source] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
     register: Optional[Literal["experiential", "borrowed_biomedical"]] = None
     needs_confirmation: bool = False
     provenance: Optional[Provenance] = None
@@ -92,6 +93,22 @@ class LabValue(BaseModel):
     source: Source = Source.DOCUMENT
     confidence: float = Field(ge=0, le=1)
     needs_confirmation: bool = False
+
+
+class Lab(BaseModel):
+    name: str
+    value: Optional[str] = None
+    unit: Optional[str] = None
+    flag: Optional[str] = None
+    reference: Optional[str] = None
+    provenance: Optional[Provenance] = None
+
+
+class DocumentRead(BaseModel):
+    doc_type: str  # "prescription" | "lab_report" | "other"
+    raw_text: str
+    medications: list[dict] = Field(default_factory=list)
+    labs: list[dict] = Field(default_factory=list)
 
 
 class Gap(BaseModel):
@@ -130,6 +147,7 @@ class IntakeNote(BaseModel):
     symptoms: list[Symptom] = Field(default_factory=list)
     medications: list[Medication] = Field(default_factory=list)
     lab_values: list[LabValue] = Field(default_factory=list)
+    labs: list[Lab] = Field(default_factory=list)
     allergies: list[Symptom] = Field(default_factory=list)
     gaps: list[Gap] = Field(default_factory=list)
     verification_flags: list[VerificationFlag] = Field(default_factory=list)
