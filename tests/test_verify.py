@@ -1,4 +1,5 @@
-from shuka.verify import detect_cues, normalize_quantity
+from shuka.schema import DriftKind
+from shuka.verify import VerificationReport, cross_check, detect_cues, normalize_quantity
 
 
 def test_negation_cue_hindi_with_anchor():
@@ -32,3 +33,36 @@ def test_paune_compound():
 def test_echo_form_still_yields_negation_anchor():
     cues = detect_cues("bukhar-vukhar nahi tha", "hi-IN")
     assert cues.negations[0].anchor == "bukhar-vukhar"
+
+
+def test_dropped_negation_flagged():
+    orig = detect_cues("bukhar nahi tha", "hi-IN")
+    en = detect_cues("had fever", "en")
+    report = cross_check(orig, en)
+    assert any(f.kind == DriftKind.NEGATION for f in report.flags)
+    assert report.flags[0].original_evidence is not None
+
+
+def test_matched_negation_not_flagged():
+    orig = detect_cues("bukhar nahi tha", "hi-IN")
+    en = detect_cues("no fever", "en")
+    assert not cross_check(orig, en).flags
+
+
+def test_number_value_drift():
+    orig = detect_cues("dhai din se dard", "hi-IN")
+    en = detect_cues("pain for two days", "en")
+    report = cross_check(orig, en)
+    assert any(f.kind == DriftKind.NUMBER for f in report.flags)
+
+
+def test_laterality_missing_in_en():
+    orig = detect_cues("baayan haath mein dard", "hi-IN")
+    en = detect_cues("pain in the hand", "en")
+    report = cross_check(orig, en)
+    assert any(f.kind == DriftKind.LATERALITY for f in report.flags)
+
+
+def test_missing_original_is_fail_safe_not_fail_open():
+    report = cross_check(None, detect_cues("no fever", "en"))
+    assert report.verified is False

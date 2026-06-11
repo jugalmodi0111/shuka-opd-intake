@@ -192,3 +192,78 @@ def detect_cues(text: str, lang: str) -> Cues:
                                            anchor=anchor, start=m.start()))
 
     return cues
+
+
+# ── TASK 7: VerificationReport + cross_check ──────────────────────────────
+
+from shuka.schema import DriftKind, VerificationFlag
+
+
+_SIDE_MAP = {
+    "baayan": "left", "baayein": "left", "left": "left", "idadu": "left",
+    "daayan": "right", "daayein": "right", "right": "right", "valadu": "right",
+    "bilateral": "both", "dono taraf": "both", "irandu pakkam": "both",
+}
+
+
+def cross_check(cues_orig, cues_en) -> VerificationReport:
+    """Detect drift between the two ASR views. Bias toward flagging (recall > precision).
+    cues_orig=None → fail SAFE: verified=False, all safety-critical facts need confirmation."""
+    if cues_orig is None:
+        return VerificationReport(flags=[], verified=False)
+
+    flags = []
+
+    # Negation: count mismatch — extra originals unflagged by EN are dropped negations
+    for i, neg in enumerate(cues_orig.negations):
+        matched = i < len(cues_en.negations)
+        if not matched:
+            flags.append(VerificationFlag(
+                fact_ref=neg.anchor,
+                kind=DriftKind.NEGATION,
+                detail=f"negation '{neg.surface}' present in original, absent in EN translation",
+                original_evidence=neg.surface,
+            ))
+
+    # Also flag EN negations with no original counterpart (spurious negation added by translation)
+    for i, neg in enumerate(cues_en.negations):
+        if i >= len(cues_orig.negations):
+            flags.append(VerificationFlag(
+                fact_ref=neg.anchor,
+                kind=DriftKind.NEGATION,
+                detail=f"negation '{neg.surface}' present in EN but absent in original",
+                original_evidence=None,
+            ))
+
+    # Laterality: semantic side comparison
+    for lat in cues_orig.lateralities:
+        orig_side = _SIDE_MAP.get(lat.surface.lower())
+        en_sides = [_SIDE_MAP.get(e.surface.lower()) for e in cues_en.lateralities]
+        if orig_side and orig_side not in en_sides:
+            flags.append(VerificationFlag(
+                fact_ref=lat.anchor,
+                kind=DriftKind.LATERALITY,
+                detail=f"laterality '{lat.surface}' (={orig_side}) not found in EN translation",
+                original_evidence=lat.surface,
+            ))
+
+    # Number: value drift (zero tolerance)
+    for i, num in enumerate(cues_orig.numbers):
+        if i < len(cues_en.numbers):
+            en_val = cues_en.numbers[i].value
+            if abs(num.value - en_val) > 0.01:
+                flags.append(VerificationFlag(
+                    fact_ref=num.anchor,
+                    kind=DriftKind.NUMBER,
+                    detail=f"number drifted: original={num.value} ({num.surface}), EN={en_val}",
+                    original_evidence=num.surface,
+                ))
+        else:
+            flags.append(VerificationFlag(
+                fact_ref=num.anchor,
+                kind=DriftKind.NUMBER,
+                detail=f"number '{num.surface}'={num.value} in original dropped in EN",
+                original_evidence=num.surface,
+            ))
+
+    return VerificationReport(flags=flags, verified=True)
