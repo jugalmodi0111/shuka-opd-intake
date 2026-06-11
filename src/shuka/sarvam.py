@@ -1,7 +1,7 @@
 import json
 import time
 from pathlib import Path
-from shuka.config import Settings
+from shuka.config import Settings, settings as _settings
 
 
 class FixtureMissingError(RuntimeError):
@@ -110,3 +110,6 @@ class SarvamClient:
             raise NotImplementedError("live TTS lands in Task 18")
         finally:
             self._log("tts", ref, t0)
+
+
+_client: SarvamClient = SarvamClient(_settings)

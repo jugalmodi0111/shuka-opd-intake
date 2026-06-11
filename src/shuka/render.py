@@ -38,7 +38,10 @@ def render_terminal(note: IntakeNote) -> str:
         lines.append("-" * 40)
         for m in note.medications:
             unconf = " [UNCONFIRMED]" if m.needs_confirmation else ""
-            lines.append(f"  [{m.source.value}] {m.name} conf={m.confidence:.0%}{unconf}")
+            src = m.source.value if m.source else (
+                m.provenance.source.value if m.provenance else "doc")
+            conf = f" conf={m.confidence:.0%}" if m.confidence is not None else ""
+            lines.append(f"  [{src}] {m.name}{conf}{unconf}")
         lines.append("")
 
     if note.lab_values:
