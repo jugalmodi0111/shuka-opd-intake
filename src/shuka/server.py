@@ -29,6 +29,14 @@ def index():
     return FileResponse(str(_WEB / "index.html"))
 
 
+@app.get("/favicon.ico")
+def favicon():
+    ico = _ASSETS / "model-01.svg"
+    if ico.exists():
+        return FileResponse(str(ico), media_type="image/svg+xml")
+    return JSONResponse({}, status_code=204)
+
+
 @app.get("/samples")
 def list_samples():
     if not _SAMPLES.exists():
