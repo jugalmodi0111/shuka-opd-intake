@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shuka — OPD Pre-Consult · Sarvam</title>
+<style>
+/* ── Fonts ───────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'SeasonMix';
+  src: url('../assets/SeasonMixVFUprights.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Matter';
+  src: url('../assets/MatterUprights-VF.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MatterMono';
+  src: url('../assets/MatterSemiMonoRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Design tokens ───────────────────────────────────────────── */
+:root {
+  --bg:          #FAFAFA;
+  --navy:        #2F334C;
+  --orange:      #F9730C;
+  --peach:       #FFB053;
+  --periwinkle:  #A5BBFC;
+  --surface:     rgba(255,255,255,0.72);
+  --surface-hi:  rgba(255,255,255,0.90);
+  --border:      rgba(14,14,14,0.10);
+  --border-lo:   rgba(14,14,14,0.06);
+  --text:        #0E0E0E;
+  --text-mid:    #4A4A5A;
+  --text-muted:  #8B8BA7;
+
+  /* Badge colours */
+  --stated-bg:   #E8F5E9; --stated-fg:   #2E7D32;
+  --denied-bg:   #F5F5F5; --denied-fg:   #616161;
+  --unconf-bg:   #FFF8E1; --unconf-fg:   #E65100;
+  --gap-bg:      #EEF2FF; --gap-fg:      #3730A3;
+
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+
+  --shadow-card: 0 2px 20px rgba(14,14,14,0.07), 0 0 0 1px var(--border);
+  --shadow-btn:  0 4px 14px rgba(249,115,12,0.30);
+}
+
+/* ── Reset & base ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Matter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Layout helpers ──────────────────────────────────────────── */
+.container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+.grid-2    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(244,247,255,0.85);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  display: flex; align-items: center; gap: 20px;
+  height: 60px; padding: 0 28px; max-width: 1120px; margin: 0 auto;
+}
+.nav-wordmark img { display: block; height: 20px; }
+.nav-divider {
+  width: 1px; height: 22px;
+  background: var(--border);
+}
+.nav-subtitle {
+  font-family: 'MatterMono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-mid);
+  text-transform: uppercase;
+}
+.nav-badge {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: rgba(165,187,252,0.18);
+  border: 1px solid rgba(165,187,252,0.40);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+.nav-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--periwinkle);
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 88px 0 72px;
+  text-align: center;
+}
+.hero-gradient-wrap {
+  position: absolute;
+  inset: -20% -10%;
+  pointer-events: none;
+  z-index: 0;
+}
+.hero-gradient-wrap img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0.92;
+}
+.hero-content {
+  position: relative; z-index: 1;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'MatterMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--orange);
+  background: rgba(249,115,12,0.10);
+  border: 1px solid rgba(249,115,12,0.22);
+  padding: 5px 14px;
+  border-radius: 100px;
+  margin-bottom: 28px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+.hero-h1 {
+  font-family: 'SeasonMix', serif;
+  font-size: clamp(38px, 6vw, 72px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  max-width: 760px;
+  margin: 0 auto 20px;
+}
+.hero-h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--orange) 0%, var(--peach) 60%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 17px;
+  color: var(--text-mid);
+  max-width: 520px;
+  margin: 0 auto 36px;
+  line-height: 1.65;
+  font-weight: 380;
+}
+.hero-model-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  margin-top: 40px;
+}
+.hero-model-row img {
+  width: 36px; height: 36px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.hero-model-row img:hover { opacity: 1; }
+
+/* ── Intake panel ────────────────────────────────────────────── */
+.intake-section { padding: 16px 0 40px; }
+
+.panel {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: 32px 36px;
+}
+
+.panel-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* Sample selector */
+.sample-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.sample-row-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+
+.btn-sample {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Matter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-hi);
+  border: 1.5px solid var(--border);
+  border-radius: 100px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn-sample:hover {
+  border-color: var(--orange);
+  background: rgba(249,115,12,0.06);
+  color: var(--orange);
+}
+.btn-sample.active {
+  border-color: var(--orange);
+  background: rgba(249,115,12,0.08);
+  color: var(--orange);
+}
+.btn-sample-flag {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Upload zone */
+.upload-zone {
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 8px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: rgba(255,255,255,0.40);
+  margin-bottom: 20px;
+  position: relative;
+}
+.upload-zone:hover {
+  border-color: var(--periwinkle);
+  background: rgba(165,187,252,0.06);
+}
+.upload-zone.has-file {
+  border-color: var(--orange);
+  background: rgba(249,115,12,0.04);
+}
+.upload-zone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon {
+  width: 32px; height: 32px;
+  color: var(--text-muted);
+}
+.upload-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.upload-label strong { color: var(--text-mid); font-weight: 500; }
+
+/* Bottom row */
+.intake-bottom {
+  display: flex; align-items: center; gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-run {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: 'Matter', sans-serif;
+  font-size: 14.5px;
+  font-weight: 550;
+  color: #fff;
+  background: var(--navy);
+  border: none; border-radius: 100px;
+  padding: 11px 28px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  letter-spacing: -0.01em;
+}
+.btn-run:hover {
+  background: #1f1f2e;
+  box-shadow: var(--shadow-btn);
+  transform: translateY(-1px);
+}
+.btn-run:active { transform: translateY(0); }
+.btn-run:disabled {
+  opacity: 0.45; cursor: not-allowed;
+  transform: none; box-shadow: none;
+}
+.btn-run-icon {
+  width: 16px; height: 16px;
+  opacity: 0.85;
+}
+
+.badge-30s {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: rgba(14,14,14,0.05);
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: 100px;
+}
+.badge-30s::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+/* ── Loading skeleton ────────────────────────────────────────── */
+.skeleton-wrap {
+  padding: 40px 0;
+  display: none;
+}
+.skeleton-wrap.visible { display: block; }
+
+@keyframes shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position: 800px 0; }
+}
+.skel {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #e8ecf4 25%, #f2f4fb 50%, #e8ecf4 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+.skel-h  { height: 20px; margin-bottom: 10px; }
+.skel-p  { height: 14px; margin-bottom: 8px; }
+.skel-lg { height: 80px; border-radius: var(--radius-md); }
+
+/* ── Results ─────────────────────────────────────────────────── */
+.results-section {
+  padding: 0 0 60px;
+  display: none;
+}
+.results-section.visible { display: block; }
+
+.section-divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 32px 0 20px;
+}
+.section-divider-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.section-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-lo);
+}
+
+/* Card base */
+.card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-card);
+}
+.card + .card { margin-top: 12px; }
+.card-title {
+  font-family: 'SeasonMix', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.card-title-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+
+/* Chief complaint */
+.complaint-text {
+  font-size: 18px;
+  font-weight: 420;
+  color: var(--text);
+  line-height: 1.55;
+  padding: 16px 20px;
+  background: rgba(249,115,12,0.05);
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+}
+
+/* HPI table */
+.hpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.hpi-table th {
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 0 12px 10px 0;
+  border-bottom: 1px solid var(--border-lo);
+}
+.hpi-table td {
+  padding: 10px 12px 10px 0;
+  border-bottom: 1px solid var(--border-lo);
+  vertical-align: top;
+  color: var(--text-mid);
+}
+.hpi-table td:first-child {
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  width: 160px;
+}
+.hpi-table tr:last-child td { border-bottom: none; }
+
+/* Chips */
+.chip {
+  display: inline-flex; align-items: center;
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.chip-stated    { background: var(--stated-bg); color: var(--stated-fg); }
+.chip-denied    { background: var(--denied-bg); color: var(--denied-fg); }
+.chip-unconf    { background: var(--unconf-bg); color: var(--unconf-fg); }
+.chip-gap       { background: var(--gap-bg);    color: var(--gap-fg); }
+.chip-orange    { background: rgba(249,115,12,0.10); color: var(--orange); }
+
+/* Symptom list */
+.symptom-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.symptom-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px;
+  color: var(--text-mid);
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 12px;
+}
+
+/* Verification flags */
+.flag-list { display: flex; flex-direction: column; gap: 10px; }
+.flag-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255,176,83,0.07);
+  border: 1px solid rgba(255,176,83,0.22);
+}
+.flag-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--peach);
+  flex-shrink: 0; margin-top: 6px;
+}
+.flag-body { flex: 1; }
+.flag-kind {
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.flag-msg { font-size: 13.5px; color: var(--text-mid); }
+
+/* Gaps */
+.gap-list { display: flex; flex-direction: column; gap: 14px; }
+.gap-item {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.gap-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  background: rgba(238,242,255,0.40);
+  border-bottom: 1px solid var(--border-lo);
+}
+.gap-body { padding: 14px 16px; }
+.gap-vernacular {
+  font-family: 'MatterMono', monospace;
+  font-size: 12.5px;
+  color: var(--text-mid);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.gap-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.btn-option {
+  font-family: 'Matter', sans-serif;
+  font-size: 12.5px;
+  color: var(--text-mid);
+  background: var(--surface-hi);
+  border: 1.5px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-option:hover {
+  border-color: var(--periwinkle);
+  background: rgba(165,187,252,0.12);
+  color: var(--navy);
+}
+
+/* Meds & labs */
+.med-list  { display: flex; flex-wrap: wrap; gap: 8px; }
+.med-item {
+  font-size: 13px;
+  background: rgba(165,187,252,0.14);
+  border: 1px solid rgba(165,187,252,0.35);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  color: var(--text-mid);
+}
+
+/* Transcripts */
+.transcript-col { display: flex; flex-direction: column; gap: 4px; }
+.transcript-lang {
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.transcript-body {
+  font-family: 'MatterMono', monospace;
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--text-mid);
+  white-space: pre-wrap;
+  background: rgba(14,14,14,0.03);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  border: 1px solid var(--border-lo);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* Audio player */
+.audio-wrap {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  background: rgba(14,14,14,0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-lo);
+}
+.audio-wrap audio { flex: 1; height: 36px; }
+.audio-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Error card */
+.error-card {
+  display: none;
+  align-items: flex-start; gap: 14px;
+  padding: 18px 22px;
+  background: rgba(255, 89, 89, 0.06);
+  border: 1px solid rgba(255, 89, 89, 0.22);
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+}
+.error-card.visible { display: flex; }
+.error-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.error-body {}
+.error-title { font-weight: 600; font-size: 14px; color: #C62828; margin-bottom: 4px; }
+.error-msg   { font-size: 13px; color: #B71C1C; font-family: 'MatterMono', monospace; }
+.error-card--inline { margin-top: 0; padding: 12px 16px; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 0 32px;
+  margin-top: 40px;
+}
+.footer-inner {
+  max-width: 1120px; margin: 0 auto; padding: 0 28px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.footer-warn-icon {
+  font-size: 13px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+.footer-text {
+  font-family: 'MatterMono', monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--text-muted);
+  max-width: 860px;
+}
+
+/* ── DisplayCards — stacked feature section ──────────────────── */
+.features-section {
+  padding: 0 0 48px;
+}
+.features-heading {
+  text-align: center;
+  margin-bottom: 56px;
+}
+.features-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.features-title {
+  font-family: 'SeasonMix', serif;
+  font-size: clamp(26px, 3.6vw, 42px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  line-height: 1.1;
+}
+.features-title em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--orange) 0%, var(--peach) 60%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* card-stack grid overlay */
+.card-stack-outer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* extra height to let skewed+shifted cards breathe */
+  min-height: 360px;
+  padding-bottom: 60px;
+}
+.card-stack {
+  display: grid;
+  grid-template-areas: 'stack';
+  place-items: center;
+  /* wide enough for the rightmost card at +128px */
+  width: 380px;
+}
+.dc-card {
+  grid-area: stack;
+  width: 340px;
+  border-radius: 18px;
+  padding: 28px 28px 24px;
+  cursor: pointer;
+  /* base transition */
+  transition: transform 0.35s cubic-bezier(.22,.68,0,1.2),
+              filter 0.35s ease,
+              box-shadow 0.35s ease;
+  will-change: transform, filter;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scrim pseudo-element — hidden on card 3, fades on hover */
+.dc-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(244,247,255,0.45);
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.dc-card:nth-child(3)::after { display: none; }
+
+/* card positions — back to front */
+.dc-card:nth-child(1) {
+  transform: translateX(0px) translateY(0px) skewY(-8deg);
+  filter: grayscale(1) brightness(0.88);
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 8px 40px rgba(14,14,14,0.22);
+  z-index: 1;
+}
+.dc-card:nth-child(2) {
+  transform: translateX(64px) translateY(40px) skewY(-8deg);
+  filter: grayscale(0.7) brightness(0.92);
+  background: linear-gradient(135deg, #2a2040 0%, #1e3050 100%);
+  border: 1px solid rgba(165,187,252,0.18);
+  box-shadow: 0 8px 40px rgba(14,14,14,0.18);
+  z-index: 2;
+}
+.dc-card:nth-child(3) {
+  transform: translateX(128px) translateY(80px) skewY(-8deg);
+  filter: none;
+  background: linear-gradient(135deg, #0e0e0e 0%, #1a1040 100%);
+  border: 1px solid rgba(165,187,252,0.30);
+  box-shadow: 0 12px 48px rgba(14,14,14,0.28), 0 0 0 1px rgba(165,187,252,0.15);
+  z-index: 3;
+}
+
+/* hover — lift each card, remove scrim */
+.dc-card:hover {
+  filter: none !important;
+  box-shadow: 0 20px 60px rgba(14,14,14,0.32) !important;
+}
+.dc-card:nth-child(1):hover {
+  transform: translateX(0px) translateY(-10px) skewY(-8deg);
+}
+.dc-card:nth-child(2):hover {
+  transform: translateX(64px) translateY(30px) skewY(-8deg);
+}
+.dc-card:nth-child(3):hover {
+  transform: translateX(128px) translateY(70px) skewY(-8deg);
+}
+.dc-card:hover::after { opacity: 0; }
+
+/* card internals */
+.dc-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  margin-bottom: 18px;
+}
+.dc-card-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.dc-card-title {
+  font-family: 'SeasonMix', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+.dc-card-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.dc-card-list li {
+  font-size: 12.5px;
+  line-height: 1.5;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.dc-card-list li::before {
+  content: '→';
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Card 1 — dark/grey */
+.dc-card:nth-child(1) .dc-card-label  { color: rgba(255,255,255,0.38); }
+.dc-card:nth-child(1) .dc-card-title  { color: rgba(255,255,255,0.72); }
+.dc-card:nth-child(1) .dc-card-list li { color: rgba(255,255,255,0.45); }
+.dc-card:nth-child(1) .dc-card-icon   { background: rgba(255,255,255,0.07); }
+
+/* Card 2 — mid depth */
+.dc-card:nth-child(2) .dc-card-label  { color: rgba(165,187,252,0.60); }
+.dc-card:nth-child(2) .dc-card-title  { color: rgba(255,255,255,0.80); }
+.dc-card:nth-child(2) .dc-card-list li { color: rgba(255,255,255,0.52); }
+.dc-card:nth-child(2) .dc-card-icon   { background: rgba(165,187,252,0.14); }
+
+/* Card 3 — front / full color */
+.dc-card:nth-child(3) .dc-card-label  { color: var(--periwinkle); }
+.dc-card:nth-child(3) .dc-card-title  { color: #fff; }
+.dc-card:nth-child(3) .dc-card-list li { color: rgba(255,255,255,0.72); }
+.dc-card:nth-child(3) .dc-card-icon   {
+  background: linear-gradient(135deg, var(--orange), var(--peach));
+}
+
+/* features side text */
+.features-layout {
+  display: grid;
+  grid-template-columns: 1fr 520px;
+  gap: 48px;
+  align-items: center;
+}
+.features-copy {
+  max-width: 360px;
+}
+.features-copy-list {
+  list-style: none; padding: 0; margin: 20px 0 0;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.features-copy-item {
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.features-copy-num {
+  font-family: 'MatterMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: rgba(14,14,14,0.05);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 3px 9px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.features-copy-text {
+  font-size: 14px;
+  color: var(--text-mid);
+  line-height: 1.6;
+}
+.features-copy-text strong {
+  color: var(--text);
+  font-weight: 550;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ── PromptInputBox ───────────────────────────────────────────── */
+.intake-section { padding: 16px 0 40px; }
+
+.prompt-box-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.prompt-box-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Outer container */
+.prompt-box {
+  background: rgba(14,14,14,0.05);
+  border: 1px solid rgba(14,14,14,0.12);
+  border-radius: 24px;
+  padding: 20px 20px 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+.prompt-box:focus-within {
+  border-color: rgba(14,14,14,0.22);
+  box-shadow: 0 4px 24px rgba(14,14,14,0.08);
+}
+
+/* Sample selector row inside box */
+.pb-sample-row {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(14,14,14,0.08);
+}
+.pb-sample-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+/* Textarea area */
+.pb-textarea-wrap {
+  position: relative;
+  margin-bottom: 14px;
+  min-height: 52px;
+  display: flex; align-items: flex-start;
+}
+.pb-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Matter', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 4px 0;
+  min-height: 52px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.pb-textarea::placeholder { color: var(--text-muted); }
+
+/* Voice recorder — shown when voice toggle is active */
+.pb-voice-recorder {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  min-height: 52px;
+}
+.pb-voice-recorder.active { display: flex; }
+
+.pb-voice-bars {
+  display: flex; align-items: center; gap: 3px;
+  height: 32px;
+}
+.pb-voice-bars span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--orange);
+  animation: voiceBar 0.8s ease-in-out infinite alternate;
+}
+.pb-voice-bars span:nth-child(1) { height: 8px;  animation-delay: 0.0s; }
+.pb-voice-bars span:nth-child(2) { height: 20px; animation-delay: 0.1s; }
+.pb-voice-bars span:nth-child(3) { height: 28px; animation-delay: 0.2s; }
+.pb-voice-bars span:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+.pb-voice-bars span:nth-child(5) { height: 24px; animation-delay: 0.15s; }
+.pb-voice-bars span:nth-child(6) { height: 10px; animation-delay: 0.25s; }
+.pb-voice-bars span:nth-child(7) { height: 18px; animation-delay: 0.05s; }
+
+@keyframes voiceBar {
+  from { transform: scaleY(1);   opacity: 0.6; }
+  to   { transform: scaleY(1.8); opacity: 1;   }
+}
+
+.pb-voice-label {
+  font-family: 'MatterMono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+  letter-spacing: 0.04em;
+}
+.pb-voice-timer {
+  font-family: 'MatterMono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* Bottom toolbar */
+.pb-toolbar {
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Toggle pills */
+.pb-toggles {
+  display: flex; align-items: center; gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.pb-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Matter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(14,14,14,0.04);
+  border: 1px solid rgba(14,14,14,0.09);
+  border-radius: 100px;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.pb-toggle:hover {
+  color: var(--text);
+  border-color: rgba(14,14,14,0.18);
+  background: rgba(14,14,14,0.07);
+}
+/* Voice active */
+.pb-toggle.voice.active {
+  color: var(--orange);
+  background: rgba(249,115,12,0.10);
+  border-color: rgba(249,115,12,0.30);
+}
+/* Image active */
+.pb-toggle.image.active {
+  color: #3730a3;
+  background: rgba(165,187,252,0.18);
+  border-color: rgba(165,187,252,0.45);
+}
+/* Mock active */
+.pb-toggle.mock.active {
+  color: #fff;
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+/* Upload filename label */
+.pb-upload-badge {
+  display: none;
+  align-items: center; gap: 6px;
+  font-family: 'MatterMono', monospace;
+  font-size: 10.5px;
+  color: var(--orange);
+  background: rgba(249,115,12,0.08);
+  border: 1px solid rgba(249,115,12,0.22);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
+.pb-upload-badge.visible { display: inline-flex; }
+
+/* Mock mode badge */
+.pb-mock-badge {
+  display: none;
+  align-items: center; gap: 6px;
+  font-family: 'MatterMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--navy);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
+.pb-mock-badge.visible { display: inline-flex; }
+.pb-mock-badge::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--peach);
+}
+
+/* Hidden file input */
+.pb-file-input {
+  display: none;
+}
+
+/* Submit button */
+.pb-submit {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--navy);
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+  margin-left: auto;
+}
+.pb-submit:hover {
+  background: #1f1f2e;
+  box-shadow: 0 4px 14px rgba(14,14,14,0.22);
+  transform: translateY(-1px);
+}
+.pb-submit:active { transform: translateY(0); }
+.pb-submit:disabled {
+  opacity: 0.38; cursor: not-allowed;
+  transform: none; box-shadow: none;
+}
+.pb-submit svg { width: 16px; height: 16px; }
+
+/* submit stop icon */
+.pb-submit .icon-stop  { display: none; }
+.pb-submit .icon-send  { display: block; }
+.pb-submit.running .icon-stop { display: block; }
+.pb-submit.running .icon-send { display: none; }
+
+/* Error & status line */
+.pb-status-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px;
+  min-height: 20px;
+}
+.pb-status-text {
+  font-family: 'MatterMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .features-layout { grid-template-columns: 1fr; }
+  .features-copy { max-width: 100%; }
+  .card-stack-outer { min-height: 300px; }
+  .card-stack { transform: scale(0.88); transform-origin: top center; }
+}
+@media (max-width: 720px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .panel { padding: 22px 20px; }
+  .hero  { padding: 60px 0 52px; }
+  .intake-bottom { flex-direction: column; align-items: flex-start; }
+  .card-stack { transform: scale(0.72); transform-origin: top center; }
+  .prompt-box { border-radius: 18px; }
+}
+
+/* ── Reveal animations ──────────────────────────────────────── */
+.reveal { opacity: 0; }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────── -->
+<header class="nav">
+  <div class="nav-inner">
+    <div class="nav-wordmark">
+      <img src="../assets/sarvam-wordmark-black.svg" alt="Sarvam" height="20">
+    </div>
+    <div class="nav-divider"></div>
+    <span class="nav-subtitle">Shuka — OPD Pre-Consult</span>
+    <span class="nav-badge">Indic-first · ASR+LLM</span>
+  </div>
+</header>
+
+<!-- ── Hero ──────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-gradient-wrap">
+    <img src="../assets/hero-gradient.svg" alt="">
+  </div>
+  <div class="container hero-content">
+    <div class="reveal hero-eyebrow">Clinical voice intake · Beta</div>
+    <h1 class="reveal hero-h1">
+      Voice intake.<br>
+      <em>Verified.</em> Indic-first.
+    </h1>
+    <p class="reveal hero-sub">
+      Shuka listens in Hindi, Tamil, and 10+ Indic languages — transcribes, structures, and verifies your patient's complaint before the doctor walks in.
+    </p>
+    <div class="reveal hero-model-row">
+      <img src="../assets/model-01.svg" alt="">
+      <img src="../assets/model-03.svg" alt="">
+      <img src="../assets/model-05.svg" alt="">
+      <img src="../assets/model-06.svg" alt="">
+      <img src="../assets/model-07.svg" alt="">
+      <img src="../assets/model-12.svg" alt="">
+      <img src="../assets/model-13.svg" alt="">
+      <img src="../assets/model-15.svg" alt="">
+    </div>
+  </div>
+</section>
+
+<!-- ── Feature DisplayCards ───────────────────────────────────── -->
+<section class="features-section">
+  <div class="container">
+    <div class="features-heading reveal">
+      <div class="features-eyebrow">What you get</div>
+      <h2 class="features-title">Three outputs. <em>One intake.</em></h2>
+    </div>
+    <div class="features-layout reveal">
+
+      <!-- Left: copy list -->
+      <div class="features-copy">
+        <ul class="features-copy-list">
+          <li class="features-copy-item">
+            <span class="features-copy-num">01</span>
+            <div class="features-copy-text">
+              <strong>Verified Facts</strong>
+              Every symptom cross-checked across two ASR passes. Contradictions flagged automatically.
+            </div>
+          </li>
+          <li class="features-copy-item">
+            <span class="features-copy-num">02</span>
+            <div class="features-copy-text">
+              <strong>Gap Follow-ups</strong>
+              Missing fields surfaced as vernacular prompts — ready for the nurse to ask.
+            </div>
+          </li>
+          <li class="features-copy-item">
+            <span class="features-copy-num">03</span>
+            <div class="features-copy-text">
+              <strong>Readback Audio</strong>
+              Structured summary spoken back in the patient's own language before handoff.
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Right: stacked cards -->
+      <div class="card-stack-outer">
+        <div class="card-stack">
+
+          <!-- Card 1 — Verified Facts (back) -->
+          <div class="dc-card">
+            <div class="dc-card-icon">✓</div>
+            <div class="dc-card-label">Verified Facts</div>
+            <div class="dc-card-title">Cross-checked symptoms</div>
+            <ul class="dc-card-list">
+              <li>Chest pain · 3 days · stated</li>
+              <li>Shortness of breath · denied</li>
+              <li>Fever 101°F · unconfirmed</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 — Gap Follow-ups (mid) -->
+          <div class="dc-card">
+            <div class="dc-card-icon">?</div>
+            <div class="dc-card-label">Gap Follow-ups</div>
+            <div class="dc-card-title">Vernacular prompts</div>
+            <ul class="dc-card-list">
+              <li>दर्द कितनी तीव्रता का है? (1–10)</li>
+              <li>क्या दर्द फैलता है?</li>
+              <li>कोई पुरानी बीमारी है?</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 — Readback Audio (front) -->
+          <div class="dc-card">
+            <div class="dc-card-icon">▶</div>
+            <div class="dc-card-label">Readback Audio</div>
+            <div class="dc-card-title">Doctor-ready summary</div>
+            <ul class="dc-card-list">
+              <li>Structured note · Hindi TTS</li>
+              <li>Plays at handoff · 22s</li>
+              <li>Download as WAV</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /features-layout -->
+  </div>
+</section>
+
+<!-- ── Intake panel (PromptInputBox) ─────────────────────────── -->
+<section class="intake-section">
+  <div class="container">
+    <div class="prompt-box-wrap reveal">
+      <div class="prompt-box-label">Voice Intake</div>
+
+      <div class="prompt-box" id="intake-panel">
+
+        <!-- Sample selector row -->
+        <div class="pb-sample-row">
+          <span class="pb-sample-label">Sample</span>
+          <button type="button" class="btn-sample" id="btn-hindi" onclick="selectSample('hindi_sample.wav', this)">
+            <span class="btn-sample-flag">🇮🇳</span> Hindi
+          </button>
+          <button type="button" class="btn-sample" id="btn-tamil" onclick="selectSample('tamil_sample.wav', this)">
+            <span class="btn-sample-flag">🇮🇳</span> Tamil
+          </button>
+          <!-- Upload badge & mock badge live here when active -->
+          <span class="pb-upload-badge" id="pb-upload-badge"></span>
+          <span class="pb-mock-badge" id="pb-mock-badge">INTAKE_MODE=mock</span>
+        </div>
+
+        <!-- Text area / voice recorder area -->
+        <div class="pb-textarea-wrap">
+          <textarea
+            class="pb-textarea"
+            id="pb-textarea"
+            rows="2"
+            placeholder="Describe symptoms… or tap 🎤 to record"
+            oninput="pbTextareaInput(this)"
+          ></textarea>
+          <!-- Voice recorder overlay (shown when voice toggle is active) -->
+          <div class="pb-voice-recorder" id="pb-voice-recorder">
+            <div class="pb-voice-bars">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span>
+            </div>
+            <span class="pb-voice-label">Recording…</span>
+            <span class="pb-voice-timer" id="pb-voice-timer">0:00</span>
+          </div>
+        </div>
+
+        <!-- Hidden file input -->
+        <input
+          type="file"
+          class="pb-file-input"
+          id="pb-image-upload"
+          accept="image/*,.pdf"
+          onchange="pbHandleUpload(this)"
+        >
+
+        <!-- Bottom toolbar -->
+        <div class="pb-toolbar">
+          <div class="pb-toggles">
+            <!-- Voice toggle -->
+            <button
+              type="button"
+              class="pb-toggle voice"
+              id="pb-toggle-voice"
+              onclick="pbToggleVoice()"
+              title="Record audio"
+            >🎤 Voice</button>
+            <!-- Image toggle -->
+            <button
+              type="button"
+              class="pb-toggle image"
+              id="pb-toggle-image"
+              onclick="pbToggleImage()"
+              title="Attach prescription"
+            >📎 Image</button>
+            <!-- Mock toggle -->
+            <button
+              type="button"
+              class="pb-toggle mock"
+              id="pb-toggle-mock"
+              onclick="pbToggleMock()"
+              title="Enable mock mode"
+            >⚡ Mock</button>
+          </div>
+
+          <!-- Submit / Stop button -->
+          <button type="button" class="pb-submit" id="pb-submit" onclick="pbSubmit()" disabled aria-label="Run intake">
+            <!-- Send icon -->
+            <svg class="icon-send" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+            <!-- Stop icon -->
+            <svg class="icon-stop" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Status / error row -->
+        <div class="pb-status-row">
+          <span class="pb-status-text" id="status-text"></span>
+          <div class="error-card error-card--inline" id="error-card">
+            <div class="error-icon">⚠</div>
+            <div class="error-body">
+              <div class="error-title">Intake failed</div>
+              <div class="error-msg" id="error-msg"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /prompt-box -->
+    </div><!-- /prompt-box-wrap -->
+  </div>
+</section>
+
+<!-- ── Skeleton ───────────────────────────────────────────────── -->
+<section id="skeleton-section" class="skeleton-wrap">
+  <div class="container">
+    <div class="skel skel-h" style="width:200px;margin-bottom:20px;"></div>
+    <div class="skel skel-lg" style="margin-bottom:12px;"></div>
+    <div class="skel skel-h" style="width:70%;"></div>
+    <div class="skel skel-p" style="width:55%;"></div>
+    <div class="skel skel-p" style="width:40%;margin-top:16px;"></div>
+  </div>
+</section>
+
+<!-- ── Results ───────────────────────────────────────────────── -->
+<section id="results-section" class="results-section">
+  <div class="container">
+
+    <!-- Chief complaint -->
+    <div class="section-divider">
+      <span class="section-divider-label">Chief Complaint</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="card reveal" id="card-complaint">
+      <div class="complaint-text" id="complaint-text"></div>
+    </div>
+
+    <!-- HPI -->
+    <div class="section-divider">
+      <span class="section-divider-label">History of Present Illness</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="card reveal" id="card-hpi">
+      <table class="hpi-table" id="hpi-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="hpi-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Symptoms -->
+    <div class="section-divider">
+      <span class="section-divider-label">Symptoms</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="card reveal" id="card-symptoms">
+      <div class="symptom-list" id="symptom-list"></div>
+    </div>
+
+    <!-- Verification flags -->
+    <div class="section-divider">
+      <span class="section-divider-label">Verification Flags</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="card reveal" id="card-flags">
+      <div class="flag-list" id="flag-list"></div>
+    </div>
+
+    <!-- Gaps -->
+    <div class="section-divider">
+      <span class="section-divider-label">Clarification Gaps</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div id="gap-list" class="gap-list reveal"></div>
+
+    <!-- Meds & Labs -->
+    <div class="section-divider">
+      <span class="section-divider-label">Medications &amp; Labs</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="grid-2">
+      <div class="card reveal" id="card-meds">
+        <div class="card-title">
+          <span class="card-title-icon" style="background:rgba(165,187,252,0.18);">💊</span>
+          Medications
+        </div>
+        <div class="med-list" id="med-list"></div>
+      </div>
+      <div class="card reveal" id="card-labs">
+        <div class="card-title">
+          <span class="card-title-icon" style="background:rgba(255,176,83,0.18);">🧪</span>
+          Labs
+        </div>
+        <div class="med-list" id="lab-list"></div>
+      </div>
+    </div>
+
+    <!-- Transcripts -->
+    <div class="section-divider">
+      <span class="section-divider-label">Verbatim Transcripts</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="grid-2">
+      <div class="card reveal">
+        <div class="transcript-col">
+          <div class="transcript-lang">English</div>
+          <div class="transcript-body" id="transcript-en"></div>
+        </div>
+      </div>
+      <div class="card reveal">
+        <div class="transcript-col">
+          <div class="transcript-lang">Original</div>
+          <div class="transcript-body" id="transcript-orig"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Readback audio -->
+    <div class="section-divider">
+      <span class="section-divider-label">Doctor Readback</span>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="card reveal" id="card-audio" style="display:none;">
+      <div class="audio-wrap">
+        <span class="audio-label">Readback</span>
+        <audio id="readback-audio" controls></audio>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <span class="footer-warn-icon">⚑</span>
+    <p class="footer-text">
+      Correlated omission — when both ASR views miss the same utterance — is the dominant failure mode in real acoustic conditions and cannot be caught by the verifier.
+    </p>
+  </div>
+</footer>
+
+<!-- ── GSAP ───────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12/dist/gsap.min.js"></script>
+<script>
+/* ── State ────────────────────────────────────────────────────── */
+let selectedSample = null;
+
+/* ── PromptInputBox state ─────────────────────────────────────── */
+let pbVoiceActive  = false;
+let pbImageActive  = false;
+let pbMockActive   = false;
+let pbVoiceTimer   = null;
+let pbVoiceSeconds = 0;
+
+/* ── PromptInputBox helpers ──────────────────────────────────── */
+function pbTextareaInput(el) {
+  // Auto-grow
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  pbSyncSubmit();
+}
+
+function pbSyncSubmit() {
+  const btn = document.getElementById('pb-submit');
+  const hasText = document.getElementById('pb-textarea').value.trim().length > 0;
+  btn.disabled = !selectedSample && !hasText && !pbVoiceActive;
+}
+
+/* Voice toggle */
+function pbToggleVoice() {
+  pbVoiceActive = !pbVoiceActive;
+  const btn      = document.getElementById('pb-toggle-voice');
+  const recorder = document.getElementById('pb-voice-recorder');
+  const textarea = document.getElementById('pb-textarea');
+
+  btn.classList.toggle('active', pbVoiceActive);
+
+  if (pbVoiceActive) {
+    textarea.style.display    = 'none';
+    recorder.classList.add('active');
+    pbVoiceSeconds = 0;
+    document.getElementById('pb-voice-timer').textContent = '0:00';
+    pbVoiceTimer = setInterval(() => {
+      pbVoiceSeconds++;
+      const m = Math.floor(pbVoiceSeconds / 60);
+      const s = pbVoiceSeconds % 60;
+      document.getElementById('pb-voice-timer').textContent =
+        m + ':' + String(s).padStart(2, '0');
+      // auto-stop at 30s
+      if (pbVoiceSeconds >= 30) pbToggleVoice();
+    }, 1000);
+  } else {
+    clearInterval(pbVoiceTimer);
+    pbVoiceTimer = null;
+    recorder.classList.remove('active');
+    textarea.style.display = '';
+  }
+  pbSyncSubmit();
+}
+
+/* Image toggle — opens file picker */
+function pbToggleImage() {
+  document.getElementById('pb-image-upload').click();
+}
+
+function pbHandleUpload(input) {
+  const badge = document.getElementById('pb-upload-badge');
+  const toggleBtn = document.getElementById('pb-toggle-image');
+  if (input.files.length > 0) {
+    pbImageActive = true;
+    toggleBtn.classList.add('active');
+    badge.textContent = '📎 ' + input.files[0].name;
+    badge.classList.add('visible');
+    // keep old upload-zone logic working
+    const oldInput = document.getElementById('image-upload');
+    if (oldInput) {
+      // Transfer the file reference via DataTransfer (best-effort)
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(input.files[0]);
+        oldInput.files = dt.files;
+      } catch(e) { /* not critical */ }
+    }
+  } else {
+    pbImageActive = false;
+    toggleBtn.classList.remove('active');
+    badge.textContent = '';
+    badge.classList.remove('visible');
+  }
+  pbSyncSubmit();
+}
+
+/* Mock toggle */
+function pbToggleMock() {
+  pbMockActive = !pbMockActive;
+  document.getElementById('pb-toggle-mock').classList.toggle('active', pbMockActive);
+  const mockBadge = document.getElementById('pb-mock-badge');
+  mockBadge.classList.toggle('visible', pbMockActive);
+  pbSyncSubmit();
+}
+
+/* Submit — bridges to existing runIntake() */
+function pbSubmit() {
+  const submitBtn = document.getElementById('pb-submit');
+  if (submitBtn.classList.contains('running')) {
+    // Stop mid-run — reload to reset (simple approach for demo)
+    location.reload();
+    return;
+  }
+  // If voice was recording, stop it first
+  if (pbVoiceActive) pbToggleVoice();
+  // Delegate to existing intake flow
+  runIntake();
+}
+
+/* ── GSAP load animation ─────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  gsap.set('.reveal', { opacity: 0, y: 20 });
+  gsap.to('.reveal', {
+    opacity: 1, y: 0,
+    duration: 0.65,
+    ease: 'power2.out',
+    stagger: 0.10,
+    delay: 0.05,
+  });
+});
+
+/* ── Sample selector ─────────────────────────────────────────── */
+function selectSample(name, btn) {
+  selectedSample = name;
+  document.querySelectorAll('.btn-sample').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Enable both old btn-run (if exists) and new pb-submit
+  const oldRun = document.getElementById('btn-run');
+  if (oldRun) oldRun.disabled = false;
+  pbSyncSubmit();
+  setStatus('Sample: ' + name);
+}
+
+/* ── Upload handler (legacy — kept for safety; new path uses pbHandleUpload) ── */
+function handleUpload(input) {
+  const zone  = document.getElementById('upload-zone');
+  const label = document.getElementById('upload-filename');
+  if (input.files.length > 0) {
+    if (zone)  zone.classList.add('has-file');
+    if (label) { label.textContent = input.files[0].name; label.style.display = 'block'; }
+  }
+}
+
+/* ── Status helper ───────────────────────────────────────────── */
+function setStatus(msg) {
+  document.getElementById('status-text').textContent = msg;
+}
+
+/* ── Main intake flow ────────────────────────────────────────── */
+async function runIntake() {
+  if (!selectedSample) return;
+  hideError();
+  showSkeleton();
+  hideResults();
+  setStatus('Fetching sample…');
+
+  const btn = document.getElementById('btn-run');
+  if (btn) btn.disabled = true;
+  const pbBtn = document.getElementById('pb-submit');
+  if (pbBtn) { pbBtn.disabled = false; pbBtn.classList.add('running'); pbBtn.setAttribute('aria-label', 'Stop intake'); }
+
+  try {
+    // Fetch the sample WAV
+    const wavResp = await fetch(`/samples/${selectedSample}`);
+    if (!wavResp.ok) throw new Error(`Could not load sample: ${wavResp.status} ${wavResp.statusText}`);
+    const blob = await wavResp.blob();
+
+    setStatus('Running intake pipeline…');
+
+    // POST to /intake
+    const fd = new FormData();
+    fd.append('audio', blob, selectedSample);
+
+    // Attach prescription if provided (new pb-image-upload, fallback to legacy id)
+    const imgInput = document.getElementById('pb-image-upload') || document.getElementById('image-upload');
+    if (imgInput && imgInput.files.length > 0) {
+      fd.append('image', imgInput.files[0]);
+    }
+
+    const resp = await fetch('/intake', { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    setStatus('Done');
+    hideSkeleton();
+    renderResults(data);
+
+  } catch (err) {
+    hideSkeleton();
+    showError(err.message);
+    setStatus('');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (pbBtn) { pbBtn.classList.remove('running'); pbBtn.setAttribute('aria-label', 'Run intake'); pbSyncSubmit(); }
+  }
+}
+
+/* ── Skeleton helpers ────────────────────────────────────────── */
+function showSkeleton() { document.getElementById('skeleton-section').classList.add('visible'); }
+function hideSkeleton() { document.getElementById('skeleton-section').classList.remove('visible'); }
+
+/* ── Error helpers ───────────────────────────────────────────── */
+function showError(msg) {
+  const card = document.getElementById('error-card');
+  document.getElementById('error-msg').textContent = msg;
+  card.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('error-card').classList.remove('visible');
+}
+
+/* ── Results helpers ─────────────────────────────────────────── */
+function hideResults() { document.getElementById('results-section').classList.remove('visible'); }
+
+function renderResults(data) {
+  const note = data.note || data;
+
+  /* Chief complaint */
+  const cc = note.chief_complaint || note.chiefComplaint || '';
+  document.getElementById('complaint-text').textContent = cc || '—';
+
+  /* HPI */
+  const hpi = note.hpi || {};
+  const hpiBody = document.getElementById('hpi-body');
+  hpiBody.innerHTML = '';
+  for (const [k, v] of Object.entries(hpi)) {
+    if (!v && v !== 0) continue;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtKey(k)}</td><td>${escHtml(String(v))}</td>`;
+    hpiBody.appendChild(tr);
+  }
+
+  /* Symptoms */
+  const syms = note.symptoms || [];
+  const symList = document.getElementById('symptom-list');
+  symList.innerHTML = '';
+  syms.forEach(s => {
+    const status = (s.status || '').toLowerCase();
+    const chipClass = status === 'stated' ? 'chip-stated'
+                    : status === 'denied' ? 'chip-denied'
+                    : 'chip-unconf';
+    const label = status === 'stated' ? 'STATED'
+                : status === 'denied' ? 'DENIED'
+                : 'UNCONFIRMED';
+    symList.innerHTML += `
+      <span class="symptom-item">
+        ${escHtml(s.name || s.symptom || s)}
+        <span class="chip ${chipClass}">${label}</span>
+      </span>`;
+  });
+
+  /* Verification flags */
+  const flags = note.verification_flags || note.verificationFlags || [];
+  const flagList = document.getElementById('flag-list');
+  flagList.innerHTML = '';
+  if (flags.length === 0) {
+    flagList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No flags raised.</span>';
+  } else {
+    flags.forEach(f => {
+      flagList.innerHTML += `
+        <div class="flag-item">
+          <div class="flag-dot"></div>
+          <div class="flag-body">
+            <div class="flag-kind">${escHtml(f.kind || f.type || 'flag')}</div>
+            <div class="flag-msg">${escHtml(f.message || f.description || f.msg || JSON.stringify(f))}</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  /* Gaps */
+  const gaps = note.gaps || [];
+  const gapList = document.getElementById('gap-list');
+  gapList.innerHTML = '';
+  gaps.forEach(g => {
+    const options = (g.options || []).map(o =>
+      `<button class="btn-option">${escHtml(String(o))}</button>`).join('');
+    gapList.innerHTML += `
+      <div class="gap-item reveal">
+        <div class="gap-header">
+          <span class="chip chip-gap">${escHtml(g.kind || g.type || 'GAP')}</span>
+          <span style="font-size:13.5px;color:var(--text-mid);font-weight:500;">${escHtml(g.field || g.topic || '')}</span>
+        </div>
+        <div class="gap-body">
+          <div class="gap-vernacular">${escHtml(g.vernacular || g.follow_up || g.question || '')}</div>
+          <div class="gap-options">${options}</div>
+        </div>
+      </div>`;
+  });
+
+  /* Medications */
+  const meds = note.medications || note.meds || [];
+  const medList = document.getElementById('med-list');
+  medList.innerHTML = meds.length
+    ? meds.map(m => `<span class="med-item">${escHtml(String(m.name || m))}</span>`).join('')
+    : '<span style="color:var(--text-muted);font-size:13px;">None reported</span>';
+
+  /* Labs */
+  const labs = note.labs || note.lab_orders || [];
+  const labList = document.getElementById('lab-list');
+  labList.innerHTML = labs.length
+    ? labs.map(l => `<span class="med-item">${escHtml(String(l.name || l))}</span>`).join('')
+    : '<span style="color:var(--text-muted);font-size:13px;">None requested</span>';
+
+  /* Transcripts */
+  const tx = note.transcripts || {};
+  document.getElementById('transcript-en').textContent   = tx.en || tx.english || tx.translated || '';
+  document.getElementById('transcript-orig').textContent = tx.original || tx.vernacular || tx.source || tx.hi || tx.ta || '';
+
+  /* Readback audio */
+  if (data.readback_wav_b64) {
+    const audioEl = document.getElementById('readback-audio');
+    audioEl.src = 'data:audio/wav;base64,' + data.readback_wav_b64;
+    document.getElementById('card-audio').style.display = 'block';
+  }
+
+  /* Show results with GSAP stagger */
+  const section = document.getElementById('results-section');
+  section.classList.add('visible');
+  gsap.set('#results-section .reveal', { opacity: 0, y: 16 });
+  gsap.to('#results-section .reveal', {
+    opacity: 1, y: 0,
+    duration: 0.5,
+    ease: 'power2.out',
+    stagger: 0.07,
+  });
+}
+
+/* ── Utils ────────────────────────────────────────────────────── */
+function fmtKey(k) {
+  return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
