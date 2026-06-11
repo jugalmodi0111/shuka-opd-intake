@@ -32,12 +32,25 @@ class SarvamClient:
         with open("logs/calls.jsonl", "a") as f:
             f.write(json.dumps(rec) + "\n")
 
+    def _sdk_stt(self):
+        # TODO: verify exact param names against https://docs.sarvam.ai/llms.txt
+        # before using in production. SDK fails silently on unknown params.
+        from sarvamai import SarvamAI
+        client = SarvamAI(api_key=self.settings.sarvam_api_key)
+        return client.speech_to_text
+
     def translate_speech(self, audio_path: Path) -> dict:
         t0 = time.time()
         try:
             if self.mode == "mock":
                 return self._fixture_json(audio_path.stem, "translate")
-            raise NotImplementedError("live ASR lands in Task 5")
+            stt = self._sdk_stt()
+            with open(audio_path, "rb") as f:
+                r = stt.translate(
+                    file=f,
+                    model=self.settings.asr_model,
+                )
+            return {"transcript": r.transcript, "language_code": getattr(r, "language_code", "unknown")}
         finally:
             self._log("asr.translate", str(audio_path), t0)
 
@@ -46,7 +59,14 @@ class SarvamClient:
         try:
             if self.mode == "mock":
                 return self._fixture_json(audio_path.stem, "transcribe")
-            raise NotImplementedError("live ASR lands in Task 5")
+            stt = self._sdk_stt()
+            with open(audio_path, "rb") as f:
+                r = stt.transcribe(
+                    file=f,
+                    model=self.settings.asr_model,
+                    language_code="unknown",
+                )
+            return {"transcript": r.transcript}
         finally:
             self._log("asr.transcribe", str(audio_path), t0)
 
