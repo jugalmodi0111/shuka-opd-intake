@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shuka — Grounding Audit Report</title>
+<style>
+body { font-family: 'Helvetica Neue', sans-serif; font-size: 14px; color: #222; background: #F4F7FF; padding: 32px; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; }
+table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+th { background: #0E0E0E; color: #fff; text-align: left; padding: 10px 14px; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.ok { color: #2E7D32; font-weight: 600; }
+.warn { color: #E65100; font-weight: 600; }
+.fail { color: #B71C1C; font-weight: 600; }
+.err { color: #B71C1C; }
+.ul { font-size: 12px; color: #666; }
+</style>
+</head>
+<body>
+<h1>Shuka — Grounding Audit</h1>
+<table>
+<thead><tr><th>File</th><th>Facts</th><th>Rate</th><th>Ungrounded</th></tr></thead>
+<tbody>
+{{ROWS}}
+</tbody>
+</table>
+</body>
+</html>

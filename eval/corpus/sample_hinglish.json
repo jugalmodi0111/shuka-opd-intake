@@ -1,0 +1,31 @@
+{
+  "language_detected": "hi-IN",
+  "chief_complaint": "abdominal pain",
+  "chief_complaint_patient_words": "pet mein dard",
+  "hpi": {
+    "duration": "2 days",
+    "provenance": {
+      "duration": {"source": "spoken", "transcript_span": "two din se", "confidence": 0.9}
+    }
+  },
+  "symptoms": [
+    {
+      "name": "abdominal pain",
+      "patient_term": "pet mein dard",
+      "status": "stated",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "pet mein dard", "confidence": 0.95}
+    },
+    {
+      "name": "fever",
+      "patient_term": "bukhar",
+      "status": "denied",
+      "needs_confirmation": false,
+      "provenance": {"source": "spoken", "transcript_span": "bukhar nahi", "confidence": 0.9}
+    }
+  ],
+  "medications": [],
+  "gaps": [],
+  "verification_flags": [],
+  "verbatim_transcript_en": "I have stomach pain for two days. No fever. pet mein dard hai two din se. bukhar nahi."
+}
