@@ -1,0 +1,12 @@
+{
+  "description": "Abdominal pain complaint with no known collapse terms — zero leading gaps expected",
+  "transcript_original": "teen din se pet mein dard hai, khana khane ke baad aur badh jaata hai",
+  "transcript_en": "stomach pain for three days, worsens after eating",
+  "lang": "hi-IN",
+  "chief_complaint": "stomach pain",
+  "hpi_duration": "3 days",
+  "assertions": {
+    "leading": 0,
+    "comment": "No collapse terms, no echo negation, no frequency drop — gap list may contain HPI_DIMENSION gaps but zero leading=True"
+  }
+}

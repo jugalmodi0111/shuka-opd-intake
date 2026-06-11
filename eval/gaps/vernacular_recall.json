@@ -1,0 +1,13 @@
+{
+  "description": "Chakkar complaint — collapse term must be detected, vernacular probe must be present",
+  "transcript_original": "subah se chakkar aa raha hai, kamzori bhi hai",
+  "transcript_en": "feeling dizzy since morning, also weakness",
+  "lang": "hi-IN",
+  "chief_complaint": "dizziness",
+  "hpi_duration": null,
+  "assertions": {
+    "gap_kinds_present": ["lexical_collapse"],
+    "patient_terms": ["chakkar"],
+    "followup_must_contain": "ghoom"
+  }
+}

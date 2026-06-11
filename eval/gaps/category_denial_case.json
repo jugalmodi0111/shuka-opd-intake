@@ -1,0 +1,12 @@
+{
+  "description": "Echo-negation category denial — bukhar-vukhar nahi pattern",
+  "transcript_original": "bukhar-vukhar nahi tha, sirf kamzori thi",
+  "transcript_en": "no fever or anything like that, just weakness",
+  "lang": "hi-IN",
+  "chief_complaint": "weakness",
+  "hpi_duration": null,
+  "assertions": {
+    "gap_kinds_present": ["category_denial"],
+    "patient_terms": ["bukhar-vukhar"]
+  }
+}

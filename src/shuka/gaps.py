@@ -215,3 +215,130 @@ def detect_hpi_dimension(note: IntakeNote) -> list:
                 ),
             ))
     return out
+
+
+# ── TASK 14/14b: orchestration + non-leading gate + LLM fallback ─────────
+
+import datetime as _dt
+import re as _re
+
+PROBE_CAP = 3  # max LLM probes per intake call
+
+
+def _common_words() -> set:
+    import json
+    p = Path(__file__).parent / "lexicons" / "common_words.json"
+    return set(json.loads(p.read_text()))
+
+
+def assert_non_leading(gap: "Gap", lex: "Lexicons") -> None:
+    """Hard-fail if the follow-up vernacular mentions a blacklisted symptom name."""
+    text = (gap.followup_vernacular or "").lower()
+    for name in lex.symptom_names:
+        if _re.search(rf"\b{_re.escape(name)}\b", text):
+            raise ValueError(
+                f"non_leading_violation: followup for '{gap.patient_term}' "
+                f"mentions blacklisted symptom '{name}'"
+            )
+
+
+def _probe_messages(term: str, lang: str) -> list:
+    lang_name = "Hindi" if "hi" in lang else "Tamil" if "ta" in lang else "Hindi"
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You generate phenomenological follow-up probes in Indic languages for "
+                "medical intake. Return JSON only: "
+                '{"probe": "...", "options": ["...", ...]}. '
+                "The probe MUST NOT name any disease, diagnosis, organ system, or body part "
+                "by its medical name. Ask only about sensation or experience. "
+                "2-4 options maximum."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Term: '{term}' (patient language: {lang_name}). "
+                "Generate a vernacular follow-up asking the patient to describe "
+                "the sensation experientially, not diagnostically."
+            ),
+        },
+    ]
+
+
+def llm_probe_unknown_collapse(
+    term: str, lang: str, ref: str, probe_count: list
+) -> "Gap | None":
+    """LLM fallback for collapse terms absent from the static lexicon.
+    probe_count is a mutable [n] list used as a shared counter across one intake run."""
+    from shuka.schema import Gap, GapKind
+
+    if probe_count[0] >= PROBE_CAP:
+        return None
+    try:
+        from shuka import sarvam as _sarvam
+        import json
+
+        raw = _sarvam._client.chat(_probe_messages(term, lang), stage="gap_probe", ref=ref)
+        probe_count[0] += 1
+        data = json.loads(raw)
+        return Gap(
+            field=f"symptom:{term}",
+            kind=GapKind.LEXICAL_COLLAPSE,
+            reason=f"LLM probe for unknown collapse term '{term}'",
+            patient_term=term,
+            followup_vernacular=data.get("probe", f"{term} kaisa lagta hai?"),
+            followup_options=list(data.get("options", [])),
+        )
+    except Exception:
+        return None
+
+
+def detect_gaps(
+    note: "IntakeNote",
+    original: "str | None",
+    lang: str,
+    lex: "Lexicons",
+    encounter_date: "str | _dt.date",
+) -> list:
+    """Orchestrate all six gap detectors. ONLY runs on the ORIGINAL transcript.
+    Returns empty list (no error) when original is None."""
+    from shuka.schema import Gap, GapKind, IntakeNote
+
+    if not original:
+        return []
+
+    if isinstance(encounter_date, str):
+        encounter_date = _dt.date.fromisoformat(encounter_date)
+
+    probe_count = [0]
+    gaps: list = []
+    known_terms = set(lex.collapse_map.get(_lang_key(lang), {}).keys())
+
+    # 1. Lexical collapse — static lexicon
+    gaps.extend(detect_lexical_collapse(original, lang, lex))
+
+    # 2. Lexical collapse — LLM fallback for unknown terms
+    common = _common_words()
+    tokens = {w.lower() for w in _re.findall(r"\b\w{4,}\b", original)}
+    unknown_candidates = sorted(tokens - known_terms - common)[:5]
+    for tok in unknown_candidates:
+        if probe_count[0] >= PROBE_CAP:
+            break  # orchestrator-level cap: enforced even if probe fn is swapped
+        g = llm_probe_unknown_collapse(tok, lang, note.chief_complaint[:20], probe_count)
+        if g is not None:
+            gaps.append(g)
+
+    # 3-7. Remaining detectors
+    gaps.extend(detect_category_denial(original, lang, lex))
+    gaps.extend(detect_frequency_drop(original, lang, lex))
+    gaps.extend(detect_temporal_anchor(original, lang, lex, encounter_date))
+    gaps.extend(detect_register_switch(original, lang, lex))
+    gaps.extend(detect_hpi_dimension(note))
+
+    # Gate: every generated gap must be non-leading
+    for g in gaps:
+        assert_non_leading(g, lex)
+
+    return gaps

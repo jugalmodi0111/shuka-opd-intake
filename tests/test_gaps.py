@@ -108,3 +108,81 @@ def test_missing_hpi_fields_become_dimension_gaps():
     assert "hpi.duration" not in fields
     char = next(g for g in gaps if g.field == "hpi.character")
     assert "jalan" in char.followup_vernacular
+
+
+import datetime
+from shuka.gaps import PROBE_CAP, assert_non_leading, detect_gaps, llm_probe_unknown_collapse
+from shuka.schema import GapKind, Gap, HPI, IntakeNote
+
+
+def _note_stub(lang="hi-IN", duration="2 days"):
+    return IntakeNote(
+        language_detected=lang, chief_complaint="stomach pain",
+        chief_complaint_patient_words="pet mein dard",
+        hpi=HPI(duration=duration),
+        verbatim_transcript_en="stomach pain for two days",
+    )
+
+
+# ── assert_non_leading ───────────────────────────────────────────────────
+
+def test_assert_non_leading_passes_clean_probe():
+    g = Gap(field="symptom:chakkar", kind=GapKind.LEXICAL_COLLAPSE,
+            patient_term="chakkar",
+            followup_vernacular="ghoomna jaisa lagta hai ya bhaari lagta hai?")
+    assert_non_leading(g, LEX)  # must not raise
+
+
+def test_assert_non_leading_hard_fails_on_blacklist_symptom():
+    import pytest
+    g = Gap(field="symptom:foo", kind=GapKind.LEXICAL_COLLAPSE,
+            patient_term="foo",
+            followup_vernacular="kya aapko bukhar bhi hai?")  # 'bukhar' in blacklist
+    with pytest.raises(ValueError, match="non_leading_violation"):
+        assert_non_leading(g, LEX)
+
+
+# ── detect_gaps ─────────────────────────────────────────────────────────
+
+def test_detect_gaps_returns_empty_when_original_is_none():
+    note = _note_stub()
+    gaps = detect_gaps(note, None, "hi-IN", LEX, "2026-06-11")
+    assert gaps == []
+
+
+def test_detect_gaps_no_leading_gaps(monkeypatch):
+    # monkeypatch llm_probe to return None so no unknown-collapse fires
+    monkeypatch.setattr("shuka.gaps.llm_probe_unknown_collapse",
+                        lambda *a, **kw: None)
+    note = _note_stub()
+    gaps = detect_gaps(
+        note,
+        "teen din se pet mein dard hai, khana khane ke baad aur badh jaata hai",
+        "hi-IN", LEX, datetime.date(2026, 6, 11))
+    assert all(not g.leads_diagnosis for g in gaps)
+
+
+def test_detect_gaps_chakkar_collapse_present(monkeypatch):
+    monkeypatch.setattr("shuka.gaps.llm_probe_unknown_collapse", lambda *a, **kw: None)
+    note = _note_stub()
+    gaps = detect_gaps(note, "subah se chakkar aa raha hai", "hi-IN", LEX,
+                       datetime.date(2026, 6, 11))
+    kinds = {g.kind for g in gaps}
+    assert GapKind.LEXICAL_COLLAPSE in kinds
+
+
+def test_probe_cap_enforced(monkeypatch):
+    call_count = [0]
+    def fake_probe(term, lang, ref, probe_count):
+        from shuka.schema import Gap, GapKind
+        call_count[0] += 1
+        probe_count[0] += 1
+        return Gap(field=f"s:{term}", kind=GapKind.LEXICAL_COLLAPSE,
+                   patient_term=term,
+                   followup_vernacular=f"{term} kaisa hai?")
+    monkeypatch.setattr("shuka.gaps.llm_probe_unknown_collapse", fake_probe)
+    note = _note_stub()
+    # 10 unknown tokens in transcript, but cap is PROBE_CAP
+    orig = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+    detect_gaps(note, orig, "hi-IN", LEX, datetime.date(2026, 6, 11))
+    assert call_count[0] <= PROBE_CAP
