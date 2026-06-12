@@ -46,6 +46,39 @@ def test_multi_turn_accumulates_history():
     assert not open_gaps(note)
 
 
+def test_freetext_answer_routed_through_llm(monkeypatch):
+    import json
+    from shuka import followup as fu
+    # Simulate Sarvam interpreting a free-text answer: normalize value + extra finding
+    def fake_interpret(gap, answer, note):
+        return {"field_value": "burning, cramping pain",
+                "additional_findings": [{"name": "loose stools", "patient_term": "dast",
+                                         "status": "stated"}],
+                "summary": "x"}
+    monkeypatch.setattr(fu, "_llm_interpret", fake_interpret)
+    note = _note([Gap(field="hpi.character", kind=GapKind.HPI_DIMENSION,
+                      followup_vernacular="Dard kaisa hai?")])
+    out = fu.apply_followup(note, "hpi.character", "jalan bhi hai aur marod bhi, dast bhi ho rahe")
+    # normalized value folded into the field
+    assert out.hpi.character == "burning, cramping pain"
+    # extra finding the patient volunteered is captured as a stated symptom
+    assert any(s.name == "loose stools" for s in out.symptoms)
+    # qa_history keeps the VERBATIM answer, not the normalized value
+    assert out.qa_history[0].answer.startswith("jalan bhi hai")
+
+
+def test_option_answer_skips_llm(monkeypatch):
+    from shuka import followup as fu
+    called = {"n": 0}
+    monkeypatch.setattr(fu, "_llm_interpret", lambda *a: called.__setitem__("n", called["n"] + 1) or {})
+    note = _note([Gap(field="hpi.character", kind=GapKind.HPI_DIMENSION,
+                      followup_vernacular="Dard kaisa hai?",
+                      followup_options=["jalan jaisa", "marod jaisa"])])
+    fu.apply_followup(note, "hpi.character", "jalan jaisa")  # exact option → deterministic
+    assert called["n"] == 0
+    assert note.hpi.character == "jalan jaisa"
+
+
 def test_unknown_gap_raises():
     note = _note([])
     with pytest.raises(KeyError):
