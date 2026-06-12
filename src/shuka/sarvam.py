@@ -45,12 +45,22 @@ class SarvamClient:
         return json.loads(p.read_text())
 
     def _log(self, stage: str, ref: str, t0: float) -> None:
-        Path("logs").mkdir(exist_ok=True)
+        # Best-effort telemetry. Serverless filesystems are read-only except /tmp,
+        # so never let a logging failure break a request.
         rec = {"stage": stage, "model": "mock" if self.mode == "mock" else stage,
                "input_ref": ref, "latency_ms": int((time.time() - t0) * 1000),
                "mode": self.mode}
-        with open("logs/calls.jsonl", "a") as f:
-            f.write(json.dumps(rec) + "\n")
+        try:
+            import os
+            log_dir = Path("logs")
+            try:
+                log_dir.mkdir(exist_ok=True)
+            except OSError:
+                log_dir = Path(os.environ.get("TMPDIR", "/tmp"))
+            with open(log_dir / "calls.jsonl", "a") as f:
+                f.write(json.dumps(rec) + "\n")
+        except OSError:
+            pass  # telemetry is optional; request must succeed regardless
 
     def translate_speech(self, audio_path: Path) -> dict:
         """English witness — saaras:v3 in translate mode."""
