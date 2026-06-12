@@ -121,6 +121,7 @@ class Gap(BaseModel):
     followup_options: list[str] = Field(default_factory=list)
     resolution_candidate: Optional[str] = None
     patient_response_verbatim: Optional[str] = None
+    resolved: bool = False
     leads_diagnosis: bool = False
 
     @field_validator("leads_diagnosis")
@@ -139,6 +140,15 @@ class Gap(BaseModel):
         return v
 
 
+class QATurn(BaseModel):
+    """One conversational follow-up turn — the question shuka asked and the
+    patient's answer. Persisted so later turns carry prior context."""
+    gap_field: str
+    gap_kind: Optional[str] = None
+    question: str
+    answer: str
+
+
 class IntakeNote(BaseModel):
     language_detected: str
     chief_complaint: str
@@ -154,6 +164,7 @@ class IntakeNote(BaseModel):
     verbatim_transcript_en: str
     verbatim_transcript_original: Optional[str] = None
     unread_documents: list[str] = Field(default_factory=list)
+    qa_history: list[QATurn] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _invariants(self) -> "IntakeNote":

@@ -117,7 +117,7 @@ def check_models() -> list[tuple[str, bool, str]]:
 def check_routes() -> list[tuple[str, bool, str]]:
     from shuka.server import app
     paths = {getattr(r, "path", "") for r in app.routes}
-    want = ["/", "/mode", "/samples", "/samples/{name}", "/intake", "/favicon.ico"]
+    want = ["/", "/mode", "/samples", "/samples/{name}", "/intake", "/followup", "/favicon.ico"]
     return [(f"route {p}", p in paths, "mounted") for p in want] + [
         ("mount /assets", any(getattr(r, "path", "").startswith("/assets") for r in app.routes),
          "static mount")]
@@ -135,6 +135,8 @@ def check_ui() -> list[tuple[str, bool, str]]:
         "UI uses MediaRecorder (real mic)": "MediaRecorder" in html,
         "UI renders followup_vernacular": "followup_vernacular" in html,
         "UI reads verbatim_transcript_en": "verbatim_transcript_en" in html,
+        "UI answers gaps (conversational)": "answerGap" in html and "/followup" in html,
+        "UI renders conversation log": "renderConversation" in html,
         "Correlated-omission disclaimer present": "orrelated omission" in html,
     }
     return [(k, v, "found" if v else "MISSING") for k, v in checks.items()]

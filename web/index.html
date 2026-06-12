@@ -644,6 +644,58 @@ body {
   color: var(--navy);
 }
 
+/* Conversational follow-up */
+.gap-answer-row { display: flex; gap: 8px; margin-top: 10px; }
+.gap-answer-input {
+  flex: 1; font-family: 'Matter', sans-serif; font-size: 13px;
+  color: var(--text); background: #fff;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 8px 12px; outline: none; transition: border-color 0.15s;
+}
+.gap-answer-input:focus { border-color: var(--orange); }
+.gap-answer-send {
+  font-family: 'Matter', sans-serif; font-size: 13px; font-weight: 550;
+  color: #fff; background: var(--navy); border: none;
+  border-radius: 10px; padding: 8px 16px; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.gap-answer-send:hover { opacity: 0.88; }
+
+.gap-resolved { opacity: 0.72; }
+.gap-resolved .gap-vernacular { text-decoration: none; color: var(--text-muted); }
+.gap-done-tag {
+  margin-left: auto; font-family: 'MatterMono', monospace;
+  font-size: 11px; color: var(--stated-fg);
+  background: var(--stated-bg); padding: 2px 9px; border-radius: 100px;
+}
+.gap-answer {
+  margin-top: 6px; font-size: 14px; color: var(--navy); font-weight: 500;
+  border-left: 2px solid var(--stated-fg); padding-left: 10px;
+}
+
+/* Conversation log */
+.conversation-log {
+  margin-top: 22px; padding: 18px 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+}
+.conv-title {
+  font-family: 'MatterMono', monospace; font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px;
+}
+.conv-turn { margin-bottom: 14px; }
+.conv-turn:last-child { margin-bottom: 0; }
+.conv-q, .conv-a { font-size: 14px; line-height: 1.5; margin-bottom: 5px; display: flex; gap: 9px; align-items: baseline; }
+.conv-q { color: var(--text-mid); }
+.conv-a { color: var(--navy); font-weight: 500; }
+.conv-tag {
+  flex: 0 0 auto; font-family: 'MatterMono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--orange); background: rgba(249,115,12,0.10);
+  border-radius: 100px; padding: 2px 8px;
+}
+.conv-tag-p { color: var(--stated-fg); background: var(--stated-bg); }
+
 /* Meds & labs */
 .med-list  { display: flex; flex-wrap: wrap; gap: 8px; }
 .med-item {
@@ -1572,6 +1624,7 @@ body {
       <div class="section-divider-line"></div>
     </div>
     <div id="gap-list" class="gap-list reveal"></div>
+    <div id="conversation-log" class="conversation-log reveal" style="display:none;"></div>
 
     <!-- Meds & Labs -->
     <div class="section-divider">
@@ -1986,8 +2039,11 @@ function hideError() {
 /* ── Results helpers ─────────────────────────────────────────── */
 function hideResults() { document.getElementById('results-section').classList.remove('visible'); }
 
+let _currentNote = null;  // running note for the conversational follow-up loop
+
 function renderResults(data) {
   const note = data.note || data;
+  _currentNote = note;       // keep latest for /followup turns
 
   /* Chief complaint */
   const cc = note.chief_complaint || note.chiefComplaint || '';
@@ -2057,30 +2113,58 @@ function renderResults(data) {
     });
   }
 
-  /* Gaps */
+  /* Gaps — conversational: each is an answerable follow-up question */
   const gaps = note.gaps || [];
+  const openG = gaps.filter(g => !g.resolved);
   const gapList = document.getElementById('gap-list');
   gapList.innerHTML = '';
-  if (!gaps.length) {
-    gapList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No follow-up gaps.</span>';
+  if (!openG.length) {
+    gapList.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No open follow-ups — all answered.</span>';
   }
   gaps.forEach(g => {
+    const field = g.field || '';
+    const kind = (g.kind || g.type || 'GAP').toUpperCase();
+    const q = g.followup_vernacular || g.vernacular || g.follow_up || g.question || '';
+    if (g.resolved) {
+      // answered turn — show question + patient's answer, struck as done
+      gapList.innerHTML += `
+        <div class="gap-item gap-resolved reveal">
+          <div class="gap-header">
+            <span class="chip chip-gap">${escHtml(kind)}</span>
+            <span class="gap-done-tag">✓ answered</span>
+          </div>
+          <div class="gap-body">
+            <div class="gap-vernacular">${escHtml(q)}</div>
+            <div class="gap-answer">“${escHtml(g.patient_response_verbatim || '')}”</div>
+          </div>
+        </div>`;
+      return;
+    }
     const opts = g.followup_options || g.options || [];
     const options = opts.map(o =>
-      `<button type="button" class="btn-option">${escHtml(String(o))}</button>`).join('');
-    const kind = (g.kind || g.type || 'GAP').toUpperCase();
+      `<button type="button" class="btn-option" onclick="answerGap('${escAttr(field)}', this.textContent)">${escHtml(String(o))}</button>`).join('');
+    const safeId = 'gapin_' + field.replace(/[^a-zA-Z0-9]/g, '_');
     gapList.innerHTML += `
       <div class="gap-item reveal">
         <div class="gap-header">
           <span class="chip chip-gap">${escHtml(kind)}</span>
-          <span style="font-size:13.5px;color:var(--text-mid);font-weight:500;">${escHtml(g.patient_term || g.field || g.topic || '')}</span>
+          <span style="font-size:13.5px;color:var(--text-mid);font-weight:500;">${escHtml(g.patient_term || field || '')}</span>
         </div>
         <div class="gap-body">
-          <div class="gap-vernacular">${escHtml(g.followup_vernacular || g.vernacular || g.follow_up || g.question || '')}</div>
+          <div class="gap-vernacular">${escHtml(q)}</div>
           <div class="gap-options">${options}</div>
+          <div class="gap-answer-row">
+            <input type="text" class="gap-answer-input" id="${safeId}" placeholder="type the patient's answer…"
+                   onkeydown="if(event.key==='Enter'){answerGap('${escAttr(field)}', this.value); this.value='';}">
+            <button type="button" class="gap-answer-send"
+                    onclick="const i=document.getElementById('${safeId}'); answerGap('${escAttr(field)}', i.value); i.value='';">Send</button>
+          </div>
         </div>
       </div>`;
   });
+
+  /* Conversation log */
+  renderConversation(note.qa_history || []);
 
   /* Medications */
   const meds = note.medications || note.meds || [];
@@ -2129,6 +2213,45 @@ function fmtKey(k) {
 }
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+
+/* ── Conversational follow-up loop ───────────────────────────── */
+async function answerGap(field, answer) {
+  answer = (answer || '').trim();
+  if (!answer || !_currentNote) return;
+  setStatus('Recording answer…');
+  try {
+    const resp = await fetch('/followup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: _currentNote, gap_field: field, answer }),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      throw new Error(`follow-up failed ${resp.status}: ${t.slice(0,120)}`);
+    }
+    const data = await resp.json();
+    renderResults(data);          // re-render with the folded answer + grown history
+    setStatus('Answer folded into note');
+  } catch (err) {
+    showError(err.message);
+    setStatus('');
+  }
+}
+
+function renderConversation(turns) {
+  const box = document.getElementById('conversation-log');
+  if (!box) return;
+  if (!turns.length) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div class="conv-title">Conversation</div>' + turns.map(t => `
+    <div class="conv-turn">
+      <div class="conv-q"><span class="conv-tag">shuka</span>${escHtml(t.question)}</div>
+      <div class="conv-a"><span class="conv-tag conv-tag-p">patient</span>${escHtml(t.answer)}</div>
+    </div>`).join('');
 }
 </script>
 </body>

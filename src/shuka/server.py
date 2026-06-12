@@ -86,3 +86,23 @@ async def intake(audio: UploadFile = File(...), image: UploadFile | None = File(
         "note": note.model_dump(mode="json"),
         "readback_wav_b64": base64.b64encode(audio_bytes).decode(),
     })
+
+
+@app.post("/followup")
+async def followup(payload: dict):
+    """Conversational turn: fold a patient's answer to a gap back into the note.
+
+    Body: {"note": <IntakeNote json>, "gap_field": "...", "answer": "..."}
+    Returns the updated note (gap resolved, answer folded, qa_history grown)."""
+    from shuka.followup import apply_followup
+    from shuka.schema import IntakeNote
+
+    try:
+        note = IntakeNote.model_validate(payload["note"])
+        updated = apply_followup(note, payload["gap_field"], payload.get("answer", ""))
+    except KeyError as exc:
+        return JSONResponse({"error": f"unknown gap: {exc}"}, status_code=400)
+    except Exception as exc:
+        return JSONResponse({"error": f"{type(exc).__name__}: {exc}"}, status_code=500)
+
+    return JSONResponse({"note": updated.model_dump(mode="json")})
