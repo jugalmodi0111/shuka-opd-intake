@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "includeFiles": "{src/**,web/**,assets/**,samples/**,fixtures/**}"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "api/index.py" }
+  ],
+  "functions": {
+    "api/index.py": { "maxDuration": 60 }
+  },
+  "env": {
+    "INTAKE_MODE": "mock"
+  }
+}

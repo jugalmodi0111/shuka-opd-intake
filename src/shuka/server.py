@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import base64
+import os
 import shutil
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile
@@ -15,8 +17,19 @@ _ROOT = Path(__file__).resolve().parent.parent.parent  # repo root (opd-intake/)
 _WEB = _ROOT / "web"
 _ASSETS = _ROOT / "assets"
 _SAMPLES = _ROOT / "samples"
-_UPLOADS = _ROOT / "out" / "uploads"
-_UPLOADS.mkdir(parents=True, exist_ok=True)
+
+# Uploads must land in a writable dir. Local: ./out/uploads. Serverless (Vercel)
+# has a read-only FS except /tmp, so fall back there.
+def _writable_uploads() -> Path:
+    for candidate in (_ROOT / "out" / "uploads", Path(tempfile.gettempdir()) / "shuka_uploads"):
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return candidate
+        except OSError:
+            continue
+    return Path(tempfile.gettempdir())
+
+_UPLOADS = _writable_uploads()
 
 app = FastAPI(title="shuka — OPD Pre-Consult Voice Intake")
 

@@ -1,0 +1,6 @@
+# Runtime deps for the Vercel Python function (mirrors pyproject [dependencies]).
+fastapi>=0.111,<1
+pydantic>=2.7,<3
+pydantic-settings>=2.2,<3
+sarvamai>=0.1
+python-multipart>=0.0.32
