@@ -1793,26 +1793,67 @@ async function runIntakeFromBlob(blob, filename) {
 }
 
 /* Shared POST core */
-async function postIntake(blob, filename) {
-  setStatus('Running intake pipeline…');
-  const fd = new FormData();
-  fd.append('audio', blob, filename);
-  const imgInput = document.getElementById('pb-image-upload') || document.getElementById('image-upload');
-  if (imgInput && imgInput.files.length > 0) fd.append('image', imgInput.files[0]);
+let _progressTimer = null;
 
-  const resp = await fetch('/intake', { method: 'POST', body: fd });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    let hint = '';
-    if (resp.status === 500 && /FixtureMissing/i.test(txt)) {
-      hint = ' — this audio has no mock fixture. Run the server with INTAKE_MODE=live to transcribe real recordings, or use a Sample clip.';
+function _startProgress() {
+  const t0 = Date.now();
+  // Staged hints reflect the real live pipeline order; elapsed seconds always shown.
+  const stages = [
+    [0,  'Transcribing — Saaras v3 (two passes)…'],
+    [4,  'Cross-checking the two transcripts…'],
+    [7,  'Structuring note — Sarvam-105B…'],
+    [13, 'Finding gaps & generating read-back…'],
+    [22, 'Almost there — finishing up…'],
+  ];
+  _progressTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    let label = stages[0][1];
+    for (const [at, msg] of stages) if (s >= at) label = msg;
+    setStatus(`${label}  (${s}s)`);
+  }, 250);
+}
+function _stopProgress() {
+  if (_progressTimer) { clearInterval(_progressTimer); _progressTimer = null; }
+}
+
+async function postIntake(blob, filename) {
+  _startProgress();
+  try {
+    const fd = new FormData();
+    fd.append('audio', blob, filename);
+    const imgInput = document.getElementById('pb-image-upload') || document.getElementById('image-upload');
+    if (imgInput && imgInput.files.length > 0) fd.append('image', imgInput.files[0]);
+
+    // Generous timeout — live pipeline can take ~25s (2 ASR + LLM + TTS)
+    const ctrl = new AbortController();
+    const killer = setTimeout(() => ctrl.abort(), 60000);
+    let resp;
+    try {
+      resp = await fetch('/intake', { method: 'POST', body: fd, signal: ctrl.signal });
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Timed out after 60s — model slow or rate-limited. Try again.');
+      throw e;
+    } finally {
+      clearTimeout(killer);
     }
-    throw new Error(`Server error ${resp.status}${hint || ': ' + txt.slice(0, 200)}`);
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      let hint = '';
+      if (resp.status === 500 && /FixtureMissing/i.test(txt)) {
+        hint = ' — this audio has no mock fixture. Run with INTAKE_MODE=live, or use a Sample clip.';
+      } else if (resp.status === 500 && /empty model response|after \d+ attempts/i.test(txt)) {
+        hint = ' — model returned empty/invalid output (transient). Click Run again.';
+      }
+      throw new Error(`Server error ${resp.status}${hint || ': ' + txt.slice(0, 200)}`);
+    }
+    const data = await resp.json();
+    setStatus('Done');
+    hideSkeleton();
+    renderResults(data);
+  } finally {
+    _stopProgress();
   }
-  const data = await resp.json();
-  setStatus('Done');
-  hideSkeleton();
-  renderResults(data);
 }
 
 /* ── Skeleton helpers ────────────────────────────────────────── */

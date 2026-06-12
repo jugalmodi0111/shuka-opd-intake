@@ -323,19 +323,23 @@ def detect_gaps(
     gaps: list = []
     known_terms = set(lex.collapse_map.get(_lang_key(lang), {}).keys())
 
-    # 1. Lexical collapse — static lexicon
-    gaps.extend(detect_lexical_collapse(original, lang, lex))
+    # 1. Lexical collapse — static lexicon (zero-latency, deterministic)
+    static_collapse = detect_lexical_collapse(original, lang, lex)
+    gaps.extend(static_collapse)
 
-    # 2. Lexical collapse — LLM fallback for unknown terms
-    common = _common_words()
-    tokens = {w.lower() for w in _re.findall(r"\b\w{4,}\b", original)}
-    unknown_candidates = sorted(tokens - known_terms - common)[:5]
-    for tok in unknown_candidates:
-        if probe_count[0] >= PROBE_CAP:
-            break  # orchestrator-level cap: enforced even if probe fn is swapped
-        g = llm_probe_unknown_collapse(tok, lang, note.chief_complaint[:20], probe_count)
-        if g is not None:
-            gaps.append(g)
+    # 2. Lexical collapse — LLM fallback ONLY when the static lexicon found nothing.
+    #    Each probe is a sequential LLM round-trip; skipping when the deterministic
+    #    map already hit keeps the common path fast (no extra network calls).
+    if not static_collapse:
+        common = _common_words()
+        tokens = {w.lower() for w in _re.findall(r"\b\w{4,}\b", original)}
+        unknown_candidates = sorted(tokens - known_terms - common)[:5]
+        for tok in unknown_candidates:
+            if probe_count[0] >= PROBE_CAP:
+                break  # orchestrator-level cap: enforced even if probe fn is swapped
+            g = llm_probe_unknown_collapse(tok, lang, note.chief_complaint[:20], probe_count)
+            if g is not None:
+                gaps.append(g)
 
     # 3-7. Remaining detectors
     gaps.extend(detect_category_denial(original, lang, lex))

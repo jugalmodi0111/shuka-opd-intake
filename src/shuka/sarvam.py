@@ -87,11 +87,19 @@ class SarvamClient:
                 return json.dumps(self._fixture_json(ref, stage))
             # sarvam-105b is a reasoning model: without an explicit max_tokens the
             # reasoning trace consumes the whole budget and `content` comes back empty.
-            # Cap reasoning and reserve room for the JSON answer.
-            resp = self._client_sdk().chat.completions(
+            # Cap reasoning and reserve room for the JSON answer. If the primary model
+            # still returns empty, fall back to the faster model (the "use them when
+            # slow/empty" path) before giving up.
+            sdk = self._client_sdk()
+            content = sdk.chat.completions(
                 messages=messages, model=self.settings.llm_model, temperature=0.2,
-                reasoning_effort="low", max_tokens=4000)
-            return resp.choices[0].message.content or ""
+                reasoning_effort="low", max_tokens=4000).choices[0].message.content or ""
+            if not content.strip() and self.settings.llm_model_fallback:
+                content = sdk.chat.completions(
+                    messages=messages, model=self.settings.llm_model_fallback,
+                    temperature=0.2, reasoning_effort="low", max_tokens=4000
+                ).choices[0].message.content or ""
+            return content
         finally:
             self._log(f"llm.{stage}", ref, t0)
 
