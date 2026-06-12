@@ -85,8 +85,12 @@ class SarvamClient:
         try:
             if self.mode == "mock":
                 return json.dumps(self._fixture_json(ref, stage))
+            # sarvam-105b is a reasoning model: without an explicit max_tokens the
+            # reasoning trace consumes the whole budget and `content` comes back empty.
+            # Cap reasoning and reserve room for the JSON answer.
             resp = self._client_sdk().chat.completions(
-                messages=messages, model=self.settings.llm_model, temperature=0.2)
+                messages=messages, model=self.settings.llm_model, temperature=0.2,
+                reasoning_effort="low", max_tokens=4000)
             return resp.choices[0].message.content or ""
         finally:
             self._log(f"llm.{stage}", ref, t0)

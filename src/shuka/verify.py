@@ -203,6 +203,10 @@ _SIDE_MAP = {
     "baayan": "left", "baayein": "left", "left": "left", "idadu": "left",
     "daayan": "right", "daayein": "right", "right": "right", "valadu": "right",
     "bilateral": "both", "dono taraf": "both", "irandu pakkam": "both",
+    # native script (live Saaras codemix returns these, not romanized)
+    "बायां": "left", "बाएं": "left", "बायें": "left", "இடது": "left",
+    "दायां": "right", "दाएं": "right", "दायें": "right", "வலது": "right",
+    "दोनों तरफ": "both", "இரண்டு பக்கம்": "both",
 }
 
 
