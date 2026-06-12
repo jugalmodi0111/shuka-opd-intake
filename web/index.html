@@ -381,6 +381,82 @@ body {
 .skel-p  { height: 14px; margin-bottom: 8px; }
 .skel-lg { height: 80px; border-radius: var(--radius-md); }
 
+/* ── Pipeline stepper (background-process indicator) ──────────── */
+.pipeline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.pipeline-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+}
+.pipeline-title {
+  font-family: 'SeasonMix', serif;
+  font-size: 17px; font-weight: 600; color: var(--navy);
+}
+.pipeline-elapsed {
+  margin-left: auto;
+  font-family: 'MatterMono', monospace;
+  font-size: 12px; color: var(--text-muted);
+  background: rgba(14,14,14,0.05);
+  padding: 3px 9px; border-radius: 100px;
+}
+.pipeline-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(249,115,12,0.25);
+  border-top-color: var(--orange);
+  animation: pspin 0.7s linear infinite;
+}
+@keyframes pspin { to { transform: rotate(360deg); } }
+.pipeline-spinner { animation: pspin 0.7s linear infinite; }
+
+.pipeline-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pstep {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 0;
+  font-size: 14px; color: var(--text-muted);
+  position: relative;
+  transition: color 0.3s;
+}
+/* connector line between steps */
+.pstep:not(:last-child)::before {
+  content: ''; position: absolute;
+  left: 9px; top: 26px; bottom: -6px; width: 2px;
+  background: var(--border);
+}
+.pstep-icon {
+  flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: #fff;
+  position: relative; z-index: 1;
+  transition: all 0.3s;
+}
+.pstep.active { color: var(--navy); font-weight: 500; }
+.pstep.active .pstep-icon {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(249,115,12,0.14);
+}
+.pstep.active .pstep-icon::after {
+  content: ''; position: absolute; inset: 3px;
+  border-radius: 50%; background: var(--orange);
+  animation: ppulse 1s ease-in-out infinite;
+}
+@keyframes ppulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.pstep.done { color: var(--text-mid); }
+.pstep.done .pstep-icon {
+  border-color: var(--stated-fg); background: var(--stated-fg);
+}
+.pstep.done .pstep-icon::after {
+  content: '✓'; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 700;
+}
+
 /* ── Results ─────────────────────────────────────────────────── */
 .results-section {
   padding: 0 0 60px;
@@ -1419,7 +1495,22 @@ body {
 <!-- ── Skeleton ───────────────────────────────────────────────── -->
 <section id="skeleton-section" class="skeleton-wrap">
   <div class="container">
-    <div class="skel skel-h" style="width:200px;margin-bottom:20px;"></div>
+    <!-- Live pipeline stepper -->
+    <div class="pipeline" id="pipeline">
+      <div class="pipeline-head">
+        <span class="pipeline-spinner" aria-hidden="true"></span>
+        <span class="pipeline-title">Processing intake</span>
+        <span class="pipeline-elapsed" id="pipeline-elapsed">0s</span>
+      </div>
+      <ol class="pipeline-steps" id="pipeline-steps">
+        <li class="pstep" data-step="0"><span class="pstep-icon"></span><span class="pstep-label">Transcribe — Saaras v3 (translate + codemix)</span></li>
+        <li class="pstep" data-step="1"><span class="pstep-icon"></span><span class="pstep-label">Cross-check the two transcripts</span></li>
+        <li class="pstep" data-step="2"><span class="pstep-icon"></span><span class="pstep-label">Structure note — Sarvam-105B</span></li>
+        <li class="pstep" data-step="3"><span class="pstep-icon"></span><span class="pstep-label">Detect gaps &amp; generate read-back</span></li>
+        <li class="pstep" data-step="4"><span class="pstep-icon"></span><span class="pstep-label">Finalize</span></li>
+      </ol>
+    </div>
+    <div class="skel skel-h" style="width:200px;margin:24px 0 20px;"></div>
     <div class="skel skel-lg" style="margin-bottom:12px;"></div>
     <div class="skel skel-h" style="width:70%;"></div>
     <div class="skel skel-p" style="width:55%;"></div>
@@ -1795,25 +1886,45 @@ async function runIntakeFromBlob(blob, filename) {
 /* Shared POST core */
 let _progressTimer = null;
 
+// Each step's [start-second, status-text]. Index = data-step on the .pstep nodes.
+const _PIPELINE_STAGES = [
+  [0,  'Transcribing — Saaras v3 (two passes)…'],
+  [4,  'Cross-checking the two transcripts…'],
+  [7,  'Structuring note — Sarvam-105B…'],
+  [13, 'Detecting gaps & generating read-back…'],
+  [22, 'Finalizing…'],
+];
+
+function _setPipelineStep(activeIdx) {
+  document.querySelectorAll('#pipeline-steps .pstep').forEach((el, i) => {
+    el.classList.toggle('done', i < activeIdx);
+    el.classList.toggle('active', i === activeIdx);
+  });
+}
+
 function _startProgress() {
   const t0 = Date.now();
-  // Staged hints reflect the real live pipeline order; elapsed seconds always shown.
-  const stages = [
-    [0,  'Transcribing — Saaras v3 (two passes)…'],
-    [4,  'Cross-checking the two transcripts…'],
-    [7,  'Structuring note — Sarvam-105B…'],
-    [13, 'Finding gaps & generating read-back…'],
-    [22, 'Almost there — finishing up…'],
-  ];
+  _setPipelineStep(0);
+  setStatus(_PIPELINE_STAGES[0][1] + '  (0s)');
   _progressTimer = setInterval(() => {
     const s = Math.floor((Date.now() - t0) / 1000);
-    let label = stages[0][1];
-    for (const [at, msg] of stages) if (s >= at) label = msg;
-    setStatus(`${label}  (${s}s)`);
+    let idx = 0;
+    for (let i = 0; i < _PIPELINE_STAGES.length; i++) if (s >= _PIPELINE_STAGES[i][0]) idx = i;
+    _setPipelineStep(idx);
+    const elapsed = document.getElementById('pipeline-elapsed');
+    if (elapsed) elapsed.textContent = s + 's';
+    setStatus(`${_PIPELINE_STAGES[idx][1]}  (${s}s)`);
   }, 250);
 }
-function _stopProgress() {
+
+function _stopProgress(success) {
   if (_progressTimer) { clearInterval(_progressTimer); _progressTimer = null; }
+  if (success) {
+    // mark every step done before the skeleton hides
+    document.querySelectorAll('#pipeline-steps .pstep').forEach(el => {
+      el.classList.remove('active'); el.classList.add('done');
+    });
+  }
 }
 
 async function postIntake(blob, filename) {
@@ -1848,11 +1959,13 @@ async function postIntake(blob, filename) {
       throw new Error(`Server error ${resp.status}${hint || ': ' + txt.slice(0, 200)}`);
     }
     const data = await resp.json();
+    _stopProgress(true);
     setStatus('Done');
     hideSkeleton();
     renderResults(data);
+    return;
   } finally {
-    _stopProgress();
+    _stopProgress(false);
   }
 }
 
