@@ -42,6 +42,8 @@ The design is built around one discipline: a system that talks to patients about
 
 Optional: a prescription/lab image is read by a vision step (`vision.py`) whose prompts are constrained to a frozen allowlist — it transcribes the document, it does not diagnose.
 
+The note is not a dead end. Each gap is an **answerable follow-up**: the patient (or front-desk staff) answers, the answer is folded back into the note, the gap resolves, and the dialogue accumulates — see [Conversational follow-up](#conversational-follow-up).
+
 ---
 
 ## Architecture — two cores
@@ -79,11 +81,26 @@ Follow-up questions may **only** ask about complaints the patient already stated
 
 ---
 
+## Conversational follow-up
+
+The intake is a **conversation, not a one-shot**. Each detected gap renders as an answerable question with option chips and a free-text box (`POST /followup`, `src/shuka/followup.py`):
+
+- **Option-chip answers** fold **deterministically** — fast, no model call. The HPI axis is filled, the symptom/medication is confirmed, the gap is marked `resolved`.
+- **Free-text answers** are routed through **Sarvam** (`_llm_interpret`) — the model interprets the answer in conversational context (original transcript + running `qa_history` + the field being filled) and returns a **constrained JSON patch** (`field_value` + `additional_findings`). Code applies the patch; the model never rewrites the whole note, so the non-leading boundary and provenance stay enforced in code. Falls back to the deterministic fold if the LLM is unavailable.
+- Every turn appends a `QATurn` to `qa_history`, keeping the **verbatim** answer (not the normalized value) so the doctor always sees the patient's own words. Later turns carry the accumulated context.
+
+---
+
 ## Mock mode — zero API spend, fully runnable
 
 `INTAKE_MODE=mock` (the default, `config.py:8`) reads every model response from `fixtures/`. A missing fixture raises `FixtureMissingError` (`sarvam.py:24`) — it **never** silently falls through to a live API call. This makes the entire system, including the full test suite and all eval gates, runnable and testable with **no API key and no spend**.
 
-`INTAKE_MODE=live` uses the real Saaras v3 (ASR), Bulbul v3 (TTS readback), and Sarvam-M (LLM) via the `sarvamai` SDK.
+`INTAKE_MODE=live` uses the real **Saaras v3** (ASR — `transcribe` with `mode=translate` for the English witness and `mode=codemix` for the original), **Bulbul v3** (TTS readback), and **Sarvam-105B** (LLM structuring + free-text follow-up interpretation) via the `sarvamai` SDK. Notes on the live path, learned from real calls:
+
+- **Concurrent ASR** — the two Saaras passes run in parallel (`asr.transcribe_both`), cutting ASR wall-clock from ~3–4s to ~1s.
+- **Reasoning budget** — Sarvam-105B is a reasoning model; without an explicit `max_tokens` the reasoning trace eats the whole budget and `content` comes back empty. The client caps reasoning and reserves room for the JSON answer; if the primary still returns empty it **falls back to `sarvam-30b`** (`config.llm_model_fallback`).
+- **Native-script lexicons** — live Saaras returns Hindi in Devanagari (`दर्द`), not romanized; the gap lexicons carry both romanized **and** native-script (Devanagari/Tamil) keys so detectors fire on live output.
+- **Wiring guardrail** — `make wiring` verifies (no network) that every model seam, server route, and UI fetch is wired; `make wiring-live` does one real round-trip per model to catch API-side breakages (deprecated model, invalid speaker) that mocks cannot.
 
 ---
 
@@ -109,8 +126,9 @@ These are real limitations, named plainly.
 1. **Correlated omission is the dominant unsolved failure.** When *both* ASR views drop the same utterance (common under real acoustic noise), the verifier cannot catch it — there is no second witness to a sound neither view heard. This is a structural limit of the two-witness design, not a bug. The κ study (`agreement.py`, Task 25) is designed to quantify it but needs real clips that do not yet exist.
 2. **Mock-validated, not field-validated.** All gates pass against synthetic/fixture data. No real patient audio has been run through the system. The festival calendar, collapse map, and lexicons are **authored, not learned**.
 3. **Eval circularity guard.** Per-case `en_renderings` and gap keywords are authored at case-creation time and pinned — never tuned post-run. But the gap benchmark cases were authored by the same author as the detectors, so high recall on them is **necessary-but-not-sufficient** evidence of correctness.
-4. **Lexicon coverage is finite.** The collapse map covers **6 Hindi** (`chakkar`, `gas`, `garmi`, `kamzori`, `dard`, `jhunjhuni`) + **2 Tamil** (`mayakkam`, `soodu`) terms. The LLM fallback (cap 3) handles unknowns, but its probes are gated only for *non-leading-ness* — not for broader clinical sensibility.
+4. **Lexicon coverage is finite.** The collapse map covers **6 Hindi** (`chakkar`, `gas`, `garmi`, `kamzori`, `dard`, `jhunjhuni`) + **2 Tamil** (`mayakkam`, `soodu`) terms, each with romanized **and** native-script keys so live Saaras output matches. The LLM fallback (cap 3) handles unknowns, but its probes are gated only for *non-leading-ness* — not for broader clinical sensibility. A Hindi/Tamil term outside the lists won't fire a static gap until added.
 5. **`register` field pydantic warning.** `Symptom.register` / `Medication.register` (`schema.py:53,83`) shadow a `BaseModel` attribute, emitting a cosmetic `UserWarning` at import. No functional impact.
+6. **Free-text follow-up normalization can drift.** Sarvam interpreting a free-text answer occasionally re-phrases it (e.g. `parso` "day-before-yesterday" → "last night"). The **verbatim** answer is always preserved in `qa_history`, so the doctor can audit the original words.
 
 ---
 
@@ -122,11 +140,15 @@ The project uses `uv` (lockfile `uv.lock` committed) and a `Makefile`.
 make install            # uv sync — install deps
 make demo               # INTAKE_MODE=mock uv run shuka demo  (no key, no spend)
 make test               # pytest tests + all 3 eval gates
-make serve              # uv run uvicorn shuka.server:app --reload  → http://localhost:8000
+make serve              # uvicorn shuka.server:app --reload → http://localhost:8000  (web UI)
 make run AUDIO=path [IMAGE=path]   # run the pipeline on a file
 make audit              # grounding audit (run_eval.py --grounding)
+make wiring             # guardrail: model seams + routes + UI wiring (no network)
+make wiring-live        # guardrail + one real round-trip per Sarvam model
 make lint               # ruff check src eval tests
 ```
+
+The web UI (`make serve`, then open `http://localhost:8000`) is a single-file front end: pick a sample or record live, watch a live pipeline stepper while it runs, then see the verified note, drift flags, and answerable follow-up gaps with a running conversation log.
 
 Direct eval commands:
 
@@ -135,7 +157,7 @@ uv run python eval/run_eval.py --gates                  # corruption + gap + reg
 uv run python eval/grounding.py --corpus eval/corpus    # grounding audit → HTML report
 ```
 
-Current state: **85 tests pass**; all 3 gates **PASS**.
+Current state: **95 tests pass**; all 3 gates **PASS**; wiring guardrail **PASS**.
 
 ---
 
@@ -167,6 +189,8 @@ Every file below has been confirmed to exist in the repo.
 | Mock mode never calls live APIs | `sarvam.FixtureMissingError` (`sarvam.py:24`) + `config.intake_mode = "mock"` default |
 | No secrets committed | `.gitignore` contains `.env`; `.env.example` committed as template |
 | κ agreement infra exists, clips pending | `eval/agreement.py` `cohen_kappa` + `eval/realclips/CONSENT.md` (no clips) |
+| Follow-ups are answerable; free-text → LLM | `src/shuka/followup.py` (`_llm_interpret` + deterministic fold) + `POST /followup` + `tests/test_followup.py` |
+| Every model seam + route + UI fetch is wired | `eval/wiring_check.py` (`make wiring` / `make wiring-live`) + `tests/test_wiring.py` |
 
 ---
 
@@ -181,8 +205,9 @@ src/shuka/
   vision.py     prescription/lab OCR with frozen prompt allowlist
   merge.py      merge audio facts + document facts
   readback.py   confirmation readback (Bulbul v3 TTS)
+  followup.py   conversational loop — fold gap answers back into the note
   pipeline.py   end-to-end orchestration
-  sarvam.py     SarvamClient — mock/live seam, fixture loading
+  sarvam.py     SarvamClient — mock/live seam, 105b + 30b fallback, fixture loading
   asr.py        transcribe_both (translate + transcribe)
   config.py     settings (INTAKE_MODE, SARVAM_API_KEY)
   render.py     note rendering
@@ -191,14 +216,17 @@ src/shuka/
   lexicons/     authored JSON: collapse_map, festivals, quantities, …
 
 eval/
-  run_eval.py   --gates / --grounding
-  perturb.py    deterministic perturbation generators
-  grounding.py  grounding-rate audit + HTML report
-  agreement.py  Cohen's κ infrastructure
-  corruption/   5 induced-drift gate cases
-  gaps/         gap benchmark cases (leading=0, vernacular recall)
-  corpus/       grounding corpus
-  realclips/    CONSENT.md (no clips yet)
+  run_eval.py     --gates / --grounding
+  perturb.py      deterministic perturbation generators
+  grounding.py    grounding-rate audit + HTML report
+  agreement.py    Cohen's κ infrastructure
+  wiring_check.py model-seam + route + UI guardrail (make wiring[-live])
+  corruption/     5 induced-drift gate cases
+  gaps/           gap benchmark cases (leading=0, vernacular recall)
+  corpus/         grounding corpus
+  realclips/      CONSENT.md (no clips yet)
 
-tests/          85 tests across verify, gaps, structure, vision, schema, …
+web/index.html    single-file front end (pipeline stepper, gaps, conversation log)
+
+tests/            95 tests across verify, gaps, structure, vision, followup, wiring, …
 ```
